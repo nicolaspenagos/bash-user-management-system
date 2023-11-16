@@ -202,6 +202,15 @@ gestionar_sistema() {
             ;;
     esac
 }
+# Verificar si el usuario es root
+if [ "$EUID" -ne 0 ]; then
+    echo "Este script debe ejecutarse con privilegios de root."
+    exit 1
+fi
+
+# El resto del script aquí
+
+echo "El script se está ejecutando con privilegios de root."
 
 # Función principal
 while true; do
