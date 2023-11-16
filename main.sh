@@ -8,7 +8,6 @@ logs_file="logs.txt"
 
 # Función para mostrar el menú principal
 mostrar_menu_principal() {
-    clear
     echo "1. Gestión de usuarios"
     echo "2. Gestión de departamentos"
     echo "3. Usuarios x departamento"
@@ -30,10 +29,11 @@ gestionar_usuarios() {
 
     case $opcion_usuario in
         1)
-            read -p "Ingrese el nombre del usuario: " nuevo_usuario
-            # Lógica para crear un usuario
-            echo "$nuevo_usuario" >> "$usuarios_file"
+            read -p "Ingrese el nombre del usuario: " new_username
+            useradd -m -s /bin/bash $new_username
+            passwd $new_username
             echo "Usuario $nuevo_usuario creado"
+            
             ;;
         2)
             read -p "Ingrese el nombre del usuario a deshabilitar: " usuario_deshabilitar
