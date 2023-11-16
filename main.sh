@@ -1,248 +1,249 @@
 #!/bin/bash
 
-# Archivos de almacenamiento
-usuarios_file="usuarios.txt"
-departamentos_file="departamentos.txt"
-asignaciones_file="asignaciones.txt"
+# Storage files
+users_file="users.txt"
+departments_file="departments.txt"
+assignments_file="assignments.txt"
 logs_file="logs.txt"
 
-# Función para mostrar el menú principal
-mostrar_menu_principal() {
-    echo "1. Gestión de usuarios"
-    echo "2. Gestión de departamentos"
-    echo "3. Usuarios x departamento"
-    echo "4. Gestión de logs"
-    echo "5. Gestión de actividades"
-    echo "6. Gestión del sistema"
-    echo "0. Salir"
+# Function to display the main menu
+show_main_menu() {
+    echo "1. User Management"
+    echo "2. Department Management"
+    echo "3. Users by Department"
+    echo "4. Log Management"
+    echo "5. Activity Management"
+    echo "6. System Management"
+    echo "0. Exit"
 }
 
-# Función para gestionar usuarios
-gestionar_usuarios() {
+# Function to manage users
+manage_users() {
     clear
-    echo "1. Crear usuario"
-    echo "2. Deshabilitar usuario"
-    echo "3. Modificar usuario"
-    echo "0. Volver al menú principal"
+    echo "1. Create user"
+    echo "2. Disable user"
+    echo "3. Modify user"
+    echo "0. Back to main menu"
 
-    read -p "Seleccione una opción: " opcion_usuario
+    read -p "Select an option: " user_option
 
-    case $opcion_usuario in
+    case $user_option in
         1)
-            read -p "Ingrese el nombre del usuario: " new_username
+            read -p "Enter the username: " new_username
             useradd -m -s /bin/bash $new_username
             passwd $new_username
-            echo "Usuario $nuevo_usuario creado"
-            
+            echo "User $new_username created"
             ;;
         2)
-            read -p "Ingrese el nombre del usuario a deshabilitar: " usuario_deshabilitar
-            # Lógica para deshabilitar un usuario
-            sed -i "/$usuario_deshabilitar/d" "$usuarios_file"
-            echo "Usuario $usuario_deshabilitar deshabilitado"
+            read -p "Enter the username to disable: " disable_user
+            # Logic to disable a user
+            sed -i "/$disable_user/d" "$users_file"
+            echo "User $disable_user disabled"
             ;;
         3)
-            read -p "Ingrese el nombre del usuario a modificar: " usuario_modificar
-            # Lógica para modificar un usuario
-            # Puedes implementar la lógica según tus necesidades
-            echo "Función de modificación aún no implementada"
+            read -p "Enter the username to modify: " modify_user
+            # Logic to modify a user
+            # You can implement the logic according to your needs
+            echo "Modification function not yet implemented"
             ;;
         0)
             ;;
         *)
-            echo "Opción no válida"
+            echo "Invalid option"
             ;;
     esac
 }
 
-# Función para gestionar departamentos
-gestionar_departamentos() {
+# Function to manage departments
+manage_departments() {
     clear
-    echo "1. Crear departamento"
-    echo "2. Deshabilitar departamento"
-    echo "3. Modificar departamento"
-    echo "0. Volver al menú principal"
+    echo "1. Create department"
+    echo "2. Disable department"
+    echo "3. Modify department"
+    echo "0. Back to main menu"
 
-    read -p "Seleccione una opción: " opcion_departamento
+    read -p "Select an option: " department_option
 
-    case $opcion_departamento in
+    case $department_option in
         1)
-            read -p "Ingrese el nombre del departamento: " nuevo_departamento
-            # Lógica para crear un departamento
-            echo "$nuevo_departamento" >> "$departamentos_file"
-            echo "Departamento $nuevo_departamento creado"
+            read -p "Enter the department name: " new_department
+            # Logic to create a department
+            echo "$new_department" >> "$departments_file"
+            echo "Department $new_department created"
             ;;
         2)
-            read -p "Ingrese el nombre del departamento a deshabilitar: " departamento_deshabilitar
-            # Lógica para deshabilitar un departamento
-            sed -i "/$departamento_deshabilitar/d" "$departamentos_file"
-            echo "Departamento $departamento_deshabilitar deshabilitado"
+            read -p "Enter the department name to disable: " disable_department
+            # Logic to disable a department
+            sed -i "/$disable_department/d" "$departments_file"
+            echo "Department $disable_department disabled"
             ;;
         3)
-            read -p "Ingrese el nombre del departamento a modificar: " departamento_modificar
-            # Lógica para modificar un departamento
-            # Puedes implementar la lógica según tus necesidades
-            echo "Función de modificación aún no implementada"
+            read -p "Enter the department name to modify: " modify_department
+            # Logic to modify a department
+            # You can implement the logic according to your needs
+            echo "Modification function not yet implemented"
             ;;
         0)
             ;;
         *)
-            echo "Opción no válida"
+            echo "Invalid option"
             ;;
     esac
 }
 
-# Función para gestionar asignaciones de usuarios a departamentos
-gestionar_asignaciones() {
+# Function to manage user assignments to departments
+manage_assignments() {
     clear
-    echo "1. Asignar usuario a departamento"
-    echo "2. Desasignar usuario de departamento"
-    echo "0. Volver al menú principal"
+    echo "1. Assign user to department"
+    echo "2. Unassign user from department"
+    echo "0. Back to main menu"
 
-    read -p "Seleccione una opción: " opcion_asignacion
+    read -p "Select an option: " assignment_option
 
-    case $opcion_asignacion in
+    case $assignment_option in
         1)
-            read -p "Ingrese el nombre del usuario: " usuario_asignar
-            read -p "Ingrese el nombre del departamento: " departamento_asignar
-            # Lógica para asignar un usuario a un departamento
-            echo "$usuario_asignar,$departamento_asignar" >> "$asignaciones_file"
-            echo "Usuario $usuario_asignar asignado al departamento $departamento_asignar"
+            read -p "Enter the username: " assign_user
+            read -p "Enter the department name: " assign_department
+            # Logic to assign a user to a department
+            echo "$assign_user,$assign_department" >> "$assignments_file"
+            echo "User $assign_user assigned to department $assign_department"
             ;;
         2)
-            read -p "Ingrese el nombre del usuario a desasignar: " usuario_desasignar
-            read -p "Ingrese el nombre del departamento: " departamento_desasignar
-            # Lógica para desasignar un usuario de un departamento
-            sed -i "/$usuario_desasignar,$departamento_desasignar/d" "$asignaciones_file"
-            echo "Usuario $usuario_desasignar desasignado del departamento $departamento_desasignar"
+            read -p "Enter the username to unassign: " unassign_user
+            read -p "Enter the department name: " unassign_department
+            # Logic to unassign a user from a department
+            sed -i "/$unassign_user,$unassign_department/d" "$assignments_file"
+            echo "User $unassign_user unassigned from department $unassign_department"
             ;;
         0)
             ;;
         *)
-            echo "Opción no válida"
+            echo "Invalid option"
             ;;
     esac
 }
 
-# Función para gestionar logs
-gestionar_logs() {
+# Function to manage logs
+manage_logs() {
     clear
-    echo "1. Búsqueda específica en logs"
-    echo "0. Volver al menú principal"
+    echo "1. Specific search in logs"
+    echo "0. Back to main menu"
 
-    read -p "Seleccione una opción: " opcion_logs
+    read -p "Select an option: " logs_option
 
-    case $opcion_logs in
+    case $logs_option in
         1)
-            read -p "Ingrese el término de búsqueda: " termino_busqueda
-            # Lógica para buscar en los logs
-            grep "$termino_busqueda" "$logs_file"
+            read -p "Enter the search term: " search_term
+            # Logic to search in logs
+            grep "$search_term" "$logs_file"
             ;;
         0)
             ;;
         *)
-            echo "Opción no válida"
+            echo "Invalid option"
             ;;
     esac
 }
 
-# Función para gestionar actividades en el sistema
-gestionar_actividades() {
+# Function to manage system activities
+manage_activities() {
     clear
-    echo "1. Rastrear actividades de usuarios en memoria"
-    echo "2. Rastrear actividades de usuarios en procesos"
-    echo "3. Rastrear actividades de usuarios en archivos"
-    echo "0. Volver al menú principal"
+    echo "1. Track user activities in memory"
+    echo "2. Track user activities in processes"
+    echo "3. Track user activities in files"
+    echo "0. Back to main menu"
 
-    read -p "Seleccione una opción: " opcion_actividades
+    read -p "Select an option: " activities_option
 
-    case $opcion_actividades in
+    case $activities_option in
         1)
-            # Lógica para rastrear actividades en memoria
-            echo "Función no implementada"
+            # Logic to track activities in memory
+            echo "Function not implemented"
             ;;
         2)
-            # Lógica para rastrear actividades en procesos
-            echo "Función no implementada"
+            # Logic to track activities in processes
+            echo "Function not implemented"
             ;;
         3)
-            # Lógica para rastrear actividades en archivos
-            echo "Función no implementada"
+            # Logic to track activities in files
+            echo "Function not implemented"
             ;;
         0)
             ;;
         *)
-            echo "Opción no válida"
+            echo "Invalid option"
             ;;
     esac
 }
 
-# Función para gestionar el sistema
-gestionar_sistema() {
+# Function to manage the system
+manage_system() {
     clear
-    echo "1. Monitorizar estado del sistema"
-    echo "2. Crear reporte de alerta"
-    echo "0. Volver al menú principal"
+    echo "1. Monitor system status"
+    echo "2. Create alert report"
+    echo "0. Back to main menu"
 
-    read -p "Seleccione una opción: " opcion_sistema
+    read -p "Select an option: " system_option
 
-    case $opcion_sistema in
+    case $system_option in
         1)
-            # Lógica para monitorizar estado del sistema
-            echo "Función no implementada"
+            # Logic to monitor system status
+            echo "Function not implemented"
             ;;
         2)
-            # Lógica para crear reporte de alerta
-            echo "Función no implementada"
+            # Logic to create alert report
+            echo "Function not implemented"
             ;;
         0)
             ;;
         *)
-            echo "Opción no válida"
+            echo "Invalid option"
             ;;
     esac
 }
-# Verificar si el usuario es root
+
+# Check if the user is root
 if [ "$EUID" -ne 0 ]; then
-    echo "Este script debe ejecutarse con privilegios de root."
+    echo "This script must be run with root privileges."
     exit 1
 fi
 
-# El resto del script aquí
+# The rest of the script here
 
-echo "El script se está ejecutando con privilegios de root."
+echo "The script is running with root privileges."
 
-# Función principal
+# Main function
 while true; do
-    mostrar_menu_principal
+    show_main_menu
 
-    read -p "Seleccione una opción: " opcion_principal
+    read -p "Select an option: " main_option
 
-    case $opcion_principal in
+    case $main_option in
         1)
-            gestionar_usuarios
+            manage_users
             ;;
         2)
-            gestionar_departamentos
+            manage_departments
             ;;
         3)
-            gestionar_asignaciones
+            manage_assignments
             ;;
         4)
-            gestionar_logs
+            manage_logs
             ;;
         5)
-            gestionar_actividades
+            manage_activities
             ;;
         6)
-            gestionar_sistema
+            manage_system
             ;;
         0)
-            echo "Saliendo del script. ¡Hasta luego!"
+            echo "Exiting the script. Goodbye!"
             exit 0
             ;;
         *)
-            echo "Opción no válida"
+            echo "Invalid option"
             ;;
     esac
 done
+
