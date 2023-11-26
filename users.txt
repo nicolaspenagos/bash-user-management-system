@@ -1,1 +1,2 @@
-#;Nombre de Usuario;Contraseña
+#;Nombre de Usuario;Contraseña;Habilitado
+1;prueba7;$y$j9T$ufJ0BTBFkz1l06t5gyfDj0$n1Xcz2ADC.6rQlHKEQvMKN92BUlZnBEgXe5t5Zhgz6/;true

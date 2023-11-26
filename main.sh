@@ -31,23 +31,41 @@ manage_users() {
         1)
             read -p "Enter the username: " new_username
 
-            # Verify if the user exists
+            # Verify if the user exists in the system
             if id "$new_username" >/dev/null 2>&1; then
                 echo "User $new_username already exists. Choose a different username."
             else
                 # Create the user if the user no exists
                 useradd -m -s /bin/bash "$new_username"
                 passwd "$new_username"
-                # Save user information to users.txt
-                echo "$(( $(wc -l < users.txt) ));$new_username;$(grep -E "$new_username:" /etc/shadow | cut -d: -f2)" >> users.txt
+                hashed_password=$(grep -E "$new_username:" /etc/shadow | cut -d: -f2)
+                # Verify if the user exists in the DB
+                if grep -q ";$new_username;" "$users_file"; then
+                    # Enable user and update password
+                    old_hashed_password=$(grep -E ";$new_username;" $users_file | cut -d ";" -f3)
+                    sed -i "/$new_username/s/;false/;true/" "$users_file"
+                    sed -i "/$new_username/s#$old_hashed_password#$hashed_password#" "$users_file"
+                else
+                    # Save user information to users.txt
+                    echo "$(wc -l < $users_file);$new_username;$(grep -E "$new_username:" /etc/shadow | cut -d: -f2);true" >> $users_file  
+                fi
                 echo "User $new_username created"
             fi
             ;;
         2)
             read -p "Enter the username to disable: " disable_user
-            # Logic to disable a user
-            sed -i "/$disable_user/d" "$users_file"
-            echo "User $disable_user disabled"
+
+            # Verify if the user exists
+            if id "$disable_user" >/dev/null 2>&1; then
+                # Logic to disable a user
+                sed -i "/$disable_user/s/;true/;false/" $users_file
+                # Logic to delete a user
+                sudo userdel -r $disable_user
+                echo "User $disable_user was removed from the system and disabled in the DB"
+            else 
+                echo "User $disable_user does not exists. Choose a different username."
+            fi
+            
             ;;
         3)
             read -p "Enter the username to modify: " modify_user
@@ -214,17 +232,14 @@ manage_system() {
 createTable(){
   tableName=$1
   headers=$2
-  path="./$tableName.txt"
-  if [ -e "$path" ]; then
+  if [ -e "$tableName" ]; then
   	echo "File exists"
   else
-  	touch $path
-  	chmod -wx $path
+  	touch $tableName
+  	chmod -wx $tableName
     #Add headers in the first line
-    echo $headers >> $path 
+    echo $headers >> $tableName
   fi
-  
-  echo $tableName
 }
 
 # Check if the user is root
@@ -233,10 +248,13 @@ if [ "$EUID" -ne 0 ]; then
     exit 1
 fi
 
-createTable "users" "#;Nombre de Usuario;Contraseña"
+createTable $users_file "#;Nombre de Usuario;Contraseña;Habilitado"
 # The rest of the script here
 
 echo "The script is running with root privileges."
+
+old_hashed_password=$(grep -E ";prueba7;" $users_file | cut -d ";" -f3)
+echo $old_hashed_password
 
 # Main function
 while true; do
