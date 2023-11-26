@@ -202,12 +202,26 @@ manage_system() {
     esac
 }
 
+createTable(){
+  tableName=$1
+  path="./$tableName.txt"
+  if [ -e "$path" ]; then
+  	echo "File exists"
+  else
+  	touch $path
+  	chmod -x $path 
+  fi
+  
+  echo $tableName
+}
+
 # Check if the user is root
 if [ "$EUID" -ne 0 ]; then
     echo "This script must be run with root privileges."
     exit 1
 fi
 
+createTable "users"
 # The rest of the script here
 
 echo "The script is running with root privileges."
