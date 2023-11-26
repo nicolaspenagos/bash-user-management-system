@@ -30,9 +30,16 @@ manage_users() {
     case $user_option in
         1)
             read -p "Enter the username: " new_username
-            useradd -m -s /bin/bash $new_username
-            passwd $new_username
-            echo "User $new_username created"
+
+            # Verify if the user exists
+            if id "$new_username" >/dev/null 2>&1; then
+                echo "User $new_username already exists. Choose a different username."
+            else
+                # Create the user if the user no exists
+                useradd -m -s /bin/bash "$new_username"
+                passwd "$new_username"
+                echo "User $new_username created"
+            fi
             ;;
         2)
             read -p "Enter the username to disable: " disable_user
@@ -204,12 +211,15 @@ manage_system() {
 
 createTable(){
   tableName=$1
+  headers=$2
   path="./$tableName.txt"
   if [ -e "$path" ]; then
   	echo "File exists"
   else
   	touch $path
-  	chmod -x $path 
+  	chmod -wx $path
+    #Add headers in the first line
+    echo $headers >> $path 
   fi
   
   echo $tableName
@@ -221,7 +231,7 @@ if [ "$EUID" -ne 0 ]; then
     exit 1
 fi
 
-createTable "users"
+createTable "users" "# -> Nombre de Usuario -> Contraseña"
 # The rest of the script here
 
 echo "The script is running with root privileges."
