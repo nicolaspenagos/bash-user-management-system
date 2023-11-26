@@ -1,1 +1,1 @@
-# -> Nombre de Usuario -> Contraseña
+#;Nombre de Usuario;Contraseña

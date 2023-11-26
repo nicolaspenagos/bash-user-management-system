@@ -38,6 +38,8 @@ manage_users() {
                 # Create the user if the user no exists
                 useradd -m -s /bin/bash "$new_username"
                 passwd "$new_username"
+                # Save user information to users.txt
+                echo "$(( $(wc -l < users.txt) ));$new_username;$(grep -E "$new_username:" /etc/shadow | cut -d: -f2)" >> users.txt
                 echo "User $new_username created"
             fi
             ;;
@@ -231,7 +233,7 @@ if [ "$EUID" -ne 0 ]; then
     exit 1
 fi
 
-createTable "users" "# -> Nombre de Usuario -> Contraseña"
+createTable "users" "#;Nombre de Usuario;Contraseña"
 # The rest of the script here
 
 echo "The script is running with root privileges."
