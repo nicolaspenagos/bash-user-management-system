@@ -340,6 +340,8 @@ assign_user_to_department() {
                 usermod -aG "$department_name" "$username"
                 #Assign the user to the department in the DB
                 add_user_to_department_in_DB "$username" "$department_name"
+                #Assign the department to the user in the DB
+                add_department_to_user_in_DB "$username" "$department_name"
                 echo "The user was successfully assigned to the department"
             fi
         else
@@ -361,6 +363,19 @@ add_user_to_department_in_DB() {
         new_users_in_department="$old_users_in_department:$username"
     fi
     sed -i "/;$department_name;/s/$old_users_in_department/$new_users_in_department/" "$departments_file"
+}
+
+add_department_to_user_in_DB() {
+    username=$1
+    department_name=$2
+
+    old_departments_of_user=$(grep -E ";$username;" $users_file | cut -d ";" -f5)
+    if [[ "$old_departments_of_user" == "None" ]]; then
+        new_departments_of_user="$department_name"
+    else
+        new_departments_of_user="$old_departments_of_user:$department_name"
+    fi
+    sed -i "/;$username;/s/$old_departments_of_user/$new_departments_of_user/" "$users_file"
 }
 
 # Function to manage logs
