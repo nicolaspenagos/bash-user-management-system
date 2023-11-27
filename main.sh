@@ -43,8 +43,8 @@ manage_users() {
                 if grep -q ";$new_username;" "$users_file"; then
                     # Enable user and update password
                     old_hashed_password=$(grep -E ";$new_username;" $users_file | cut -d ";" -f3)
-                    sed -i "/$new_username/s/;false/;true/" "$users_file"
-                    sed -i "/$new_username/s#$old_hashed_password#$hashed_password#" "$users_file"
+                    sed -i "/;$new_username;/s/false/true/" "$users_file"
+                    sed -i "/;$new_username;/s#$old_hashed_password#$hashed_password#" "$users_file"
                 else
                     # Save user information to users.txt
                     echo "$(wc -l < $users_file);$new_username;$(grep -E "$new_username:" /etc/shadow | cut -d: -f2);true" >> $users_file  
@@ -58,7 +58,7 @@ manage_users() {
             # Verify if the user exists
             if id "$disable_user" >/dev/null 2>&1; then
                 # Logic to disable a user
-                sed -i "/$disable_user/s/;true/;false/" $users_file
+                sed -i "/;$disable_user;/s/true/false/" $users_file
                 # Logic to delete a user
                 sudo userdel -r $disable_user
                 echo "User $disable_user was removed from the system and disabled in the DB"
@@ -252,9 +252,6 @@ createTable $users_file "#;Nombre de Usuario;Contraseña;Habilitado"
 # The rest of the script here
 
 echo "The script is running with root privileges."
-
-old_hashed_password=$(grep -E ";prueba7;" $users_file | cut -d ";" -f3)
-echo $old_hashed_password
 
 # Main function
 while true; do
