@@ -188,7 +188,7 @@ update_password_in_DB() {
 create_department() {
     read -rp "Enter the department name: " new_department
     # Check if the department already exists in the operating system
-    if department_exists_in_OS "$department_name"; then
+    if department_exists_in_OS "$new_department"; then
         # The department already exists in the system
         echo "Department $new_department already exists."
     else
@@ -308,11 +308,7 @@ manage_assignments() {
 
     case $assignment_option in
         1)
-            read -rp "Enter the username: " assign_user
-            read -rp "Enter the department name: " assign_department
-            # Logic to assign a user to a department
-            echo "$assign_user,$assign_department" >> "$assignments_file"
-            echo "User $assign_user assigned to department $assign_department"
+            assign_user_to_department
             ;;
         2)
             read -rp "Enter the username to unassign: " unassign_user
@@ -327,6 +323,59 @@ manage_assignments() {
             echo "Invalid option"
             ;;
     esac
+}
+
+assign_user_to_department() {
+    read -rp "Enter the username: " username
+    # Verify if the user exists
+    if id "$username" > "/dev/null" 2>&1; then
+        read -rp "Enter the department name to assign to $username: " department_name
+        # Check if the department exists in the operating system
+        if department_exists_in_OS "$department_name"; then
+            # Check if the user is already a member of the department
+            if id -nG "$username" | grep -qw "$department_name"; then
+                echo "User $username is already a member of the department $department_name."
+            else
+                #Assign the user to the department in the system
+                usermod -aG "$department_name" "$username"
+                #Assign the user to the department in the DB
+                add_user_to_department_in_DB "$username" "$department_name"
+                #Assign the department to the user in the DB
+                add_department_to_user_in_DB "$username" "$department_name"
+                echo "The user was successfully assigned to the department"
+            fi
+        else
+            echo "Department $department_name doesn't exist."
+        fi
+    else
+        echo "User $username does not exists. Choose a different username."
+    fi
+}
+
+add_user_to_department_in_DB() {
+    username=$1
+    department_name=$2
+
+    old_users_in_department=$(grep -E ";$department_name;" $departments_file | cut -d ";" -f4)
+    if [[ "$old_users_in_department" == "None" ]]; then
+        new_users_in_department="$username"
+    else
+        new_users_in_department="$old_users_in_department:$username"
+    fi
+    sed -i "/;$department_name;/s/$old_users_in_department/$new_users_in_department/" "$departments_file"
+}
+
+add_department_to_user_in_DB() {
+    username=$1
+    department_name=$2
+
+    old_departments_of_user=$(grep -E ";$username;" $users_file | cut -d ";" -f5)
+    if [[ "$old_departments_of_user" == "None" ]]; then
+        new_departments_of_user="$department_name"
+    else
+        new_departments_of_user="$old_departments_of_user:$department_name"
+    fi
+    sed -i "/;$username;/s/$old_departments_of_user/$new_departments_of_user/" "$users_file"
 }
 
 # Function to manage logs
@@ -415,7 +464,7 @@ create_tables() {
   fi
 
   if [ ! -e "$departments_file" ]; then
-    echo -e "#;Group_name;Enabled;Users" > "$departments_file"
+    echo -e "#;Department_name;Enabled;Users" > "$departments_file"
     chmod 777 "$departments_file"
   fi
 }
