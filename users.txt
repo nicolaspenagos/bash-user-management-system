@@ -1,1 +1,1 @@
-#;Username;Password;Enabled
+#;Username;Password;Enabled;Departments
