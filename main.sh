@@ -20,9 +20,9 @@ show_main_menu() {
 # Function to manage users
 manage_users() {
     clear
-    echo "1. Create user"
+    echo "1. Create user" #TODO: No permitir que se creen usuarios con / o \ #TODO: Chequear que el grupo exista antes de crear el usuario
     echo "2. Disable user"
-    echo "3. Modify user"
+    echo "3. Modify user" #TODO: No permitir que se creen usuarios con / o \
     echo "0. Back to main menu"
 
     read -rp "Select an option: " user_option
@@ -58,11 +58,11 @@ create_user() {
         # Verify if the user exists in the DB
         if grep -q ";$new_username;" "$users_file"; then
             # Enable user and update password
-            sed -i "/;$new_username;/s/false/true/" "$users_file"
+            sed -i "/;$new_username;/s/No/Yes/" "$users_file"
             update_password_in_DB "$new_username"
         else
             # Save user information to users.txt
-            echo "$(wc -l < $users_file);$new_username;$(grep -E "$new_username:" /etc/shadow | cut -d: -f2);true" >> $users_file  
+            echo "$(wc -l < $users_file);$new_username;$(grep -E "$new_username:" /etc/shadow | cut -d: -f2);Yes;None" >> $users_file
         fi
         echo "User $new_username created"
     fi
@@ -73,10 +73,10 @@ disable_user() {
 
     # Verify if the user exists
     if id "$disable_user" > "/dev/null" 2>&1; then
-        # Logic to disable a user
-        sed -i "/;$disable_user;/s/true/false/" $users_file
         # Logic to delete a user
         sudo userdel -r "$disable_user"
+        # Logic to disable a user
+        sed -i "/;$disable_user;/s/Yes/No/" $users_file
         echo "User $disable_user was removed from the system and disabled in the DB"
     else 
         echo "User $disable_user does not exists. Choose a different username."
@@ -103,7 +103,7 @@ modify_user() {
                 else 
                     #Update user in the system
                     usermod -l "$new_username" -m -d "/home/$new_username" "$username"
-                    #Update system in the DB
+                    #Update user in the DB
                     change_username_in_DB "$username" "$new_username"
                     echo "The user was successfully updated"
                 fi
@@ -163,7 +163,6 @@ update_password_in_DB() {
     username=$1
     old_hashed_password=$(grep -E ";$new_username;" $users_file | cut -d ";" -f3)
     hashed_password=$(grep -E "$new_username:" /etc/shadow | cut -d: -f2)
-    sed -i "/;$old_username;/s/$old_username/$new_username/" $users_file
     sed -i "/;$new_username;/s#$old_hashed_password#$hashed_password#" "$users_file"
 }
 
@@ -392,7 +391,7 @@ manage_system() {
 
 create_tables() {
   if [ ! -e "$users_file" ]; then
-    echo -e "#;Username;Password;Enabled" > "$users_file"
+    echo -e "#;Username;Password;Enabled;Departments" > "$users_file"
     chmod 777 "$users_file"
   fi
 
