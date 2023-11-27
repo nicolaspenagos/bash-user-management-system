@@ -160,6 +160,90 @@ update_password_in_DB() {
     sed -i "/;$new_username;/s#$old_hashed_password#$hashed_password#" "$users_file"
 }
 
+create_department() {
+    read -p "Enter the department name: " new_department
+    # Check if the department already exists in the operating system
+    if department_exists_in_OS "$department_name"; then
+        # The department already exists in the system
+        echo "Department $new_department already exists."
+    else
+        # Check if the department is disabled in the db
+        if department_disabled_in_db "$new_department"; then
+            # Enable department in db
+            sed -i "/$new_department/s/No/Yes/" "$departments_file"
+            # Add the department to the system
+            sudo addgroup "$new_department"
+            echo "Department $new_department re-enabled."
+        else
+            # The department does not exist in the operating system or the db, add it to the system and the db
+            sudo addgroup "$new_department"
+            numero_registro=$(wc -l < "$departments_file")
+            if [ "$numero_registro" -gt 0 ]; then
+                ((numero_registro--))
+            fi
+            ((numero_registro++))
+            echo -e "$numero_registro;$new_department;Yes;None" >> "$departments_file"
+            echo "Department $new_department created."
+        fi
+    fi
+}
+
+# Function to disable/delete a department and adjust user membership
+disable_department() {
+  read -p "Enter the department name to disable: " department_name
+  if department_exists_in_OS "$department_name"; then
+    # Get the list of users in the department
+    users=$(getent group "$department_name" | cut -d: -f4)
+
+    # Show users in department
+    echo "Users in the department $department_name: $users"
+
+    # Ask if the user wants to continue
+    read -p "Do you want to delete the group $department_name and adjust the users' membership? (s/n): " response
+
+    if [ "$response" == "s" ]; then
+      # Adjust user membership
+      for user in $users; do
+        sudo deluser "$user" "$department_name"
+      done
+
+      # Delete department
+      sudo delgroup "$department_name"
+      sed -i "/$department_name/s/Yes/No/" "$departments_file"
+      echo "Department $department_name disabled."
+    else
+      echo "Operation cancelled."
+    fi
+  else
+    echo "Department $department_name doesn't exist."
+  fi
+}
+
+modify_department() {
+    read -p "Enter the department name to modify: " department_name
+    # Check if the department exists in the operating system
+    if department_exists_in_OS "$department_name"; then
+        # Request new name for the department
+        read -p "Ingrese el nuevo nombre para el departamento $department_name: " new_department_name
+        # Modify the department name
+        sudo groupmod -n "$new_department_name" "$department_name"
+        sed -i "s/$department_name/$new_department_name/" "$departments_file"
+        echo "Department $department_name modified to $new_department_name."
+    else
+        echo "Department $department_name doesn't exist."
+    fi
+}
+
+# Function to check if the group exists
+department_exists_in_OS() {
+  grep -q "^$1:" /etc/group
+}
+
+# Feature to check if a department already exists and is disabled in db
+department_disabled_in_db() {
+  grep -q "$1;No" "$departments_file"
+}
+
 # Function to manage departments
 manage_departments() {
     clear
@@ -172,22 +256,13 @@ manage_departments() {
 
     case $department_option in
         1)
-            read -rp "Enter the department name: " new_department
-            # Logic to create a department
-            echo "$new_department" >> "$departments_file"
-            echo "Department $new_department created"
+            create_department
             ;;
         2)
-            read -rp "Enter the department name to disable: " disable_department
-            # Logic to disable a department
-            sed -i "/$disable_department/d" "$departments_file"
-            echo "Department $disable_department disabled"
+            disable_department
             ;;
         3)
-            read -rp "Enter the department name to modify: " modify_department
-            # Logic to modify a department
-            # You can implement the logic according to your needs
-            echo "Modification function not yet implemented"
+            modify_department
             ;;
         0)
             ;;
@@ -308,16 +383,15 @@ manage_system() {
     esac
 }
 
-createTable(){
-  tableName=$1
-  headers=$2
-  if [ -e "$tableName" ]; then
-  	echo "File exists"
-  else
-  	touch "$tableName"
-  	chmod -wx "$tableName"
-    #Add headers in the first line
-    echo "$headers" >> "$tableName"
+create_tables() {
+  if [ ! -e "$users_file" ]; then
+    echo -e "#;Username;Password;Enabled" > "$users_file"
+    chmod 777 "$users_file"
+  fi
+
+  if [ ! -e "$departments_file" ]; then
+    echo -e "#;Group_name;Enabled;Users" > "$departments_file"
+    chmod 777 "$departments_file"
   fi
 }
 
@@ -327,10 +401,9 @@ if [ "$EUID" -ne 0 ]; then
     exit 1
 fi
 
-createTable $users_file "#;Nombre de Usuario;Contraseña;Habilitado"
-# The rest of the script here
-
 echo "The script is running with root privileges."
+
+create_tables
 
 # Main function
 while true; do
@@ -366,4 +439,3 @@ while true; do
             ;;
     esac
 done
-
