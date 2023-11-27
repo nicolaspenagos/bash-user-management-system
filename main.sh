@@ -86,10 +86,17 @@ disable_user() {
         sudo userdel -r "$disable_user"
         # Logic to disable a user
         sed -i "/;$disable_user;/s/Yes/No/" $users_file
+        remove_departments_from_user "$disable_user"
         echo "User $disable_user was removed from the system and disabled in the DB"
     else 
         echo "User $disable_user does not exists. Choose a different username."
     fi
+}
+
+remove_departments_from_user() {
+    username=$1
+    old_departments_of_user=$(grep -E ";$username;" $users_file | cut -d ";" -f5)
+    sed -i "/;$username;/s/$old_departments_of_user/None/" "$users_file"
 }
 
 modify_user() {
