@@ -20,7 +20,7 @@ show_main_menu() {
 # Function to manage users
 manage_users() {
     clear
-    echo "1. Create user" #TODO: No permitir que se creen usuarios con / o \
+    echo "1. Create user"
     echo "2. Disable user"
     echo "3. Modify user" #TODO: No permitir que se creen usuarios con / o \
     echo "0. Back to main menu"
@@ -48,27 +48,32 @@ manage_users() {
 create_user() {
     read -rp "Enter the username: " new_username
 
-    # Verify if the user exists in the system
-    if id "$new_username" >/dev/null 2>&1; then
-        echo "User $new_username already exists. Choose a different username."
+    # Check if the username contains the characters '/' or '\'
+    if [[ "$new_username" =~ [\/\\] ]]; then
+        printf "The username cannot contain the characters '/' or '%c'.\n" "\\"
     else
-        # Check if a group with the same name exists before creating a new user.
-        if grep -q "$new_username" "/etc/group"; then
-            useradd -m -s /bin/bash "$new_username" -g "$new_username"
-        else 
-            useradd -m -s /bin/bash "$new_username"
-        fi
-        passwd "$new_username"
-        # Verify if the user exists in the DB
-        if grep -q ";$new_username;" "$users_file"; then
-            # Enable user and update password
-            sed -i "/;$new_username;/s/No/Yes/" "$users_file"
-            update_password_in_DB "$new_username"
+        # Verify if the user exists in the system
+        if id "$new_username" >/dev/null 2>&1; then
+            echo "User $new_username already exists. Choose a different username."
         else
-            # Save user information to users.txt
-            echo "$(wc -l < $users_file);$new_username;$(grep -E "$new_username:" /etc/shadow | cut -d: -f2);Yes;None" >> $users_file
+            # Check if a group with the same name exists before creating a new user.
+            if grep -q "^$new_username:" "/etc/group"; then
+                useradd -m -s /bin/bash "$new_username" -g "$new_username"
+            else 
+                useradd -m -s /bin/bash "$new_username"
+            fi
+            passwd "$new_username"
+            # Verify if the user exists in the DB
+            if grep -q ";$new_username;" "$users_file"; then
+                # Enable user and update password
+                sed -i "/;$new_username;/s/No/Yes/" "$users_file"
+                update_password_in_DB "$new_username"
+            else
+                # Save user information to users.txt
+                echo "$(wc -l < $users_file);$new_username;$(grep -E "$new_username:" /etc/shadow | cut -d: -f2);Yes;None" >> $users_file
+            fi
+            echo "User $new_username created"
         fi
-        echo "User $new_username created"
     fi
 }
 
@@ -101,15 +106,20 @@ modify_user() {
             # Verify if the user exists
             if id "$username" > "/dev/null" 2>&1; then
                 read -rp "Enter the new username: " new_username
-                # Verify that the user does not exist
-                if id "$new_username" > "/dev/null" 2>&1; then
-                    echo "User $new_username already exists. Choose a different username."
-                else 
-                    #Update user in the system
-                    usermod -l "$new_username" -m -d "/home/$new_username" "$username"
-                    #Update user in the DB
-                    change_username_in_DB "$username" "$new_username"
-                    echo "The user was successfully updated"
+                # Check if the username contains the characters '/' or '\'
+                if [[ "$new_username" =~ [\/\\] ]]; then
+                    printf "The username cannot contain the characters '/' or '%c'.\n" "\\"
+                else
+                    # Verify that the user does not exist
+                    if id "$new_username" > "/dev/null" 2>&1; then
+                        echo "User $new_username already exists. Choose a different username."
+                    else 
+                        #Update user in the system
+                        usermod -l "$new_username" -m -d "/home/$new_username" "$username"
+                        #Update user in the DB
+                        change_username_in_DB "$username" "$new_username"
+                        echo "The user was successfully updated"
+                    fi
                 fi
             else 
                 echo "User $username does not exists. Choose a different username."
@@ -133,17 +143,22 @@ modify_user() {
             # Verify if the user exists
             if id "$username" > "/dev/null" 2>&1; then
                 read -rp "Enter the new username: " new_username
-                # Verify that the user does not exist
-                if id "$new_username" > "/dev/null" 2>&1; then
-                    echo "User $new_username already exists. Choose a different username."
-                else 
-                    #Update user in the system
-                    usermod -l "$new_username" -m -d "/home/$new_username" "$username"
-                    passwd "$new_username"
-                    #Update system in the DB
-                    change_username_in_DB "$username" "$new_username"
-                    update_password_in_DB "$new_username"
-                    echo "The user was successfully updated"
+                # Check if the username contains the characters '/' or '\'
+                if [[ "$new_username" =~ [\/\\] ]]; then
+                    printf "The username cannot contain the characters '/' or '%c'.\n" "\\"
+                else
+                    # Verify that the user does not exist
+                    if id "$new_username" > "/dev/null" 2>&1; then
+                        echo "User $new_username already exists. Choose a different username."
+                    else 
+                        #Update user in the system
+                        usermod -l "$new_username" -m -d "/home/$new_username" "$username"
+                        passwd "$new_username"
+                        #Update system in the DB
+                        change_username_in_DB "$username" "$new_username"
+                        update_password_in_DB "$new_username"
+                        echo "The user was successfully updated"
+                    fi
                 fi
             else 
                 echo "User $username does not exists. Choose a different username."
