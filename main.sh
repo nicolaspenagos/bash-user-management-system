@@ -22,7 +22,7 @@ manage_users() {
     clear
     echo "1. Create user"
     echo "2. Disable user"
-    echo "3. Modify user" #TODO: No permitir que se creen usuarios con / o \
+    echo "3. Modify user"
     echo "0. Back to main menu"
 
     read -rp "Select an option: " user_option
