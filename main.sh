@@ -25,11 +25,11 @@ manage_users() {
     echo "3. Modify user"
     echo "0. Back to main menu"
 
-    read -p "Select an option: " user_option
+    read -rp "Select an option: " user_option
 
     case $user_option in
         1)
-            read -p "Enter the username: " new_username
+            read -rp "Enter the username: " new_username
 
             # Verify if the user exists in the system
             if id "$new_username" >/dev/null 2>&1; then
@@ -38,13 +38,11 @@ manage_users() {
                 # Create the user if the user no exists
                 useradd -m -s /bin/bash "$new_username"
                 passwd "$new_username"
-                hashed_password=$(grep -E "$new_username:" /etc/shadow | cut -d: -f2)
                 # Verify if the user exists in the DB
                 if grep -q ";$new_username;" "$users_file"; then
                     # Enable user and update password
-                    old_hashed_password=$(grep -E ";$new_username;" $users_file | cut -d ";" -f3)
                     sed -i "/;$new_username;/s/false/true/" "$users_file"
-                    sed -i "/;$new_username;/s#$old_hashed_password#$hashed_password#" "$users_file"
+                    update_password_in_DB "$new_username"
                 else
                     # Save user information to users.txt
                     echo "$(wc -l < $users_file);$new_username;$(grep -E "$new_username:" /etc/shadow | cut -d: -f2);true" >> $users_file  
@@ -53,14 +51,14 @@ manage_users() {
             fi
             ;;
         2)
-            read -p "Enter the username to disable: " disable_user
+            read -rp "Enter the username to disable: " disable_user
 
             # Verify if the user exists
-            if id "$disable_user" >/dev/null 2>&1; then
+            if id "$disable_user" > "/dev/null" 2>&1; then
                 # Logic to disable a user
                 sed -i "/;$disable_user;/s/true/false/" $users_file
                 # Logic to delete a user
-                sudo userdel -r $disable_user
+                sudo userdel -r "$disable_user"
                 echo "User $disable_user was removed from the system and disabled in the DB"
             else 
                 echo "User $disable_user does not exists. Choose a different username."
@@ -68,10 +66,7 @@ manage_users() {
             
             ;;
         3)
-            read -p "Enter the username to modify: " modify_user
-            # Logic to modify a user
-            # You can implement the logic according to your needs
-            echo "Modification function not yet implemented"
+            modify_user
             ;;
         0)
             ;;
@@ -79,6 +74,90 @@ manage_users() {
             echo "Invalid option"
             ;;
     esac
+}
+
+modify_user() {
+    echo "1. Change user name"
+    echo "2. Change password"
+    echo "3. Change username and password"
+    echo "0. Back to main menu"
+
+    read -rp "Select an option: " user_option
+
+    case $user_option in
+        1)
+            read -rp "Enter the old username: " username
+            # Verify if the user exists
+            if id "$username" > "/dev/null" 2>&1; then
+                read -rp "Enter the new username: " new_username
+                # Verify that the user does not exist
+                if id "$new_username" > "/dev/null" 2>&1; then
+                    echo "User $new_username already exists. Choose a different username."
+                else 
+                    #Update user in the system
+                    usermod -l "$new_username" -m -d "/home/$new_username" "$username"
+                    #Update system in the DB
+                    change_username_in_DB "$username" "$new_username"
+                    echo "The user was successfully updated"
+                fi
+            else 
+                echo "User $username does not exists. Choose a different username."
+            fi
+            ;;
+        2)
+            read -rp "Enter the username: " username
+            # Verify if the user exists
+            if id "$username" > "/dev/null" 2>&1; then
+                #Update password in the system
+                passwd "$username"
+                #Update password in the DB
+                update_password_in_DB "$username"
+                echo "The user was successfully updated"
+            else 
+                echo "User $username does not exists. Choose a different username."
+            fi
+            ;;
+        3)    
+            read -rp "Enter the old username: " username
+            # Verify if the user exists
+            if id "$username" > "/dev/null" 2>&1; then
+                read -rp "Enter the new username: " new_username
+                # Verify that the user does not exist
+                if id "$new_username" > "/dev/null" 2>&1; then
+                    echo "User $new_username already exists. Choose a different username."
+                else 
+                    #Update user in the system
+                    usermod -l "$new_username" -m -d "/home/$new_username" "$username"
+                    passwd "$new_username"
+                    #Update system in the DB
+                    change_username_in_DB "$username" "$new_username"
+                    update_password_in_DB "$new_username"
+                    echo "The user was successfully updated"
+                fi
+            else 
+                echo "User $username does not exists. Choose a different username."
+            fi
+            ;;
+        0) 
+            ;;
+        *)
+            echo "Invalid option"
+            ;;
+    esac
+}
+
+change_username_in_DB() {
+    old_username=$1
+    new_username=$2
+    sed -i "/;$old_username;/s/$old_username/$new_username/" $users_file
+}
+
+update_password_in_DB() {
+    username=$1
+    old_hashed_password=$(grep -E ";$new_username;" $users_file | cut -d ";" -f3)
+    hashed_password=$(grep -E "$new_username:" /etc/shadow | cut -d: -f2)
+    sed -i "/;$old_username;/s/$old_username/$new_username/" $users_file
+    sed -i "/;$new_username;/s#$old_hashed_password#$hashed_password#" "$users_file"
 }
 
 # Function to manage departments
@@ -89,23 +168,23 @@ manage_departments() {
     echo "3. Modify department"
     echo "0. Back to main menu"
 
-    read -p "Select an option: " department_option
+    read -rp "Select an option: " department_option
 
     case $department_option in
         1)
-            read -p "Enter the department name: " new_department
+            read -rp "Enter the department name: " new_department
             # Logic to create a department
             echo "$new_department" >> "$departments_file"
             echo "Department $new_department created"
             ;;
         2)
-            read -p "Enter the department name to disable: " disable_department
+            read -rp "Enter the department name to disable: " disable_department
             # Logic to disable a department
             sed -i "/$disable_department/d" "$departments_file"
             echo "Department $disable_department disabled"
             ;;
         3)
-            read -p "Enter the department name to modify: " modify_department
+            read -rp "Enter the department name to modify: " modify_department
             # Logic to modify a department
             # You can implement the logic according to your needs
             echo "Modification function not yet implemented"
@@ -125,19 +204,19 @@ manage_assignments() {
     echo "2. Unassign user from department"
     echo "0. Back to main menu"
 
-    read -p "Select an option: " assignment_option
+    read -rp "Select an option: " assignment_option
 
     case $assignment_option in
         1)
-            read -p "Enter the username: " assign_user
-            read -p "Enter the department name: " assign_department
+            read -rp "Enter the username: " assign_user
+            read -rp "Enter the department name: " assign_department
             # Logic to assign a user to a department
             echo "$assign_user,$assign_department" >> "$assignments_file"
             echo "User $assign_user assigned to department $assign_department"
             ;;
         2)
-            read -p "Enter the username to unassign: " unassign_user
-            read -p "Enter the department name: " unassign_department
+            read -rp "Enter the username to unassign: " unassign_user
+            read -rp "Enter the department name: " unassign_department
             # Logic to unassign a user from a department
             sed -i "/$unassign_user,$unassign_department/d" "$assignments_file"
             echo "User $unassign_user unassigned from department $unassign_department"
@@ -156,11 +235,11 @@ manage_logs() {
     echo "1. Specific search in logs"
     echo "0. Back to main menu"
 
-    read -p "Select an option: " logs_option
+    read -rp "Select an option: " logs_option
 
     case $logs_option in
         1)
-            read -p "Enter the search term: " search_term
+            read -rp "Enter the search term: " search_term
             # Logic to search in logs
             grep "$search_term" "$logs_file"
             ;;
@@ -180,7 +259,7 @@ manage_activities() {
     echo "3. Track user activities in files"
     echo "0. Back to main menu"
 
-    read -p "Select an option: " activities_option
+    read -rp "Select an option: " activities_option
 
     case $activities_option in
         1)
@@ -210,7 +289,7 @@ manage_system() {
     echo "2. Create alert report"
     echo "0. Back to main menu"
 
-    read -p "Select an option: " system_option
+    read -rp "Select an option: " system_option
 
     case $system_option in
         1)
@@ -235,10 +314,10 @@ createTable(){
   if [ -e "$tableName" ]; then
   	echo "File exists"
   else
-  	touch $tableName
-  	chmod -wx $tableName
+  	touch "$tableName"
+  	chmod -wx "$tableName"
     #Add headers in the first line
-    echo $headers >> $tableName
+    echo "$headers" >> "$tableName"
   fi
 }
 
@@ -257,7 +336,7 @@ echo "The script is running with root privileges."
 while true; do
     show_main_menu
 
-    read -p "Select an option: " main_option
+    read -rp "Select an option: " main_option
 
     case $main_option in
         1)
