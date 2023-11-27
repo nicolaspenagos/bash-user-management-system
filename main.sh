@@ -29,41 +29,10 @@ manage_users() {
 
     case $user_option in
         1)
-            read -rp "Enter the username: " new_username
-
-            # Verify if the user exists in the system
-            if id "$new_username" >/dev/null 2>&1; then
-                echo "User $new_username already exists. Choose a different username."
-            else
-                # Create the user if the user no exists
-                useradd -m -s /bin/bash "$new_username"
-                passwd "$new_username"
-                # Verify if the user exists in the DB
-                if grep -q ";$new_username;" "$users_file"; then
-                    # Enable user and update password
-                    sed -i "/;$new_username;/s/false/true/" "$users_file"
-                    update_password_in_DB "$new_username"
-                else
-                    # Save user information to users.txt
-                    echo "$(wc -l < $users_file);$new_username;$(grep -E "$new_username:" /etc/shadow | cut -d: -f2);true" >> $users_file  
-                fi
-                echo "User $new_username created"
-            fi
+            create_user
             ;;
         2)
-            read -rp "Enter the username to disable: " disable_user
-
-            # Verify if the user exists
-            if id "$disable_user" > "/dev/null" 2>&1; then
-                # Logic to disable a user
-                sed -i "/;$disable_user;/s/true/false/" $users_file
-                # Logic to delete a user
-                sudo userdel -r "$disable_user"
-                echo "User $disable_user was removed from the system and disabled in the DB"
-            else 
-                echo "User $disable_user does not exists. Choose a different username."
-            fi
-            
+            disable_user
             ;;
         3)
             modify_user
@@ -74,6 +43,44 @@ manage_users() {
             echo "Invalid option"
             ;;
     esac
+}
+
+create_user() {
+    read -rp "Enter the username: " new_username
+
+    # Verify if the user exists in the system
+    if id "$new_username" >/dev/null 2>&1; then
+        echo "User $new_username already exists. Choose a different username."
+    else
+        # Create the user if the user no exists
+        useradd -m -s /bin/bash "$new_username"
+        passwd "$new_username"
+        # Verify if the user exists in the DB
+        if grep -q ";$new_username;" "$users_file"; then
+            # Enable user and update password
+            sed -i "/;$new_username;/s/false/true/" "$users_file"
+            update_password_in_DB "$new_username"
+        else
+            # Save user information to users.txt
+            echo "$(wc -l < $users_file);$new_username;$(grep -E "$new_username:" /etc/shadow | cut -d: -f2);true" >> $users_file  
+        fi
+        echo "User $new_username created"
+    fi
+}
+
+disable_user() {
+    read -rp "Enter the username to disable: " disable_user
+
+    # Verify if the user exists
+    if id "$disable_user" > "/dev/null" 2>&1; then
+        # Logic to disable a user
+        sed -i "/;$disable_user;/s/true/false/" $users_file
+        # Logic to delete a user
+        sudo userdel -r "$disable_user"
+        echo "User $disable_user was removed from the system and disabled in the DB"
+    else 
+        echo "User $disable_user does not exists. Choose a different username."
+    fi
 }
 
 modify_user() {
@@ -161,7 +168,7 @@ update_password_in_DB() {
 }
 
 create_department() {
-    read -p "Enter the department name: " new_department
+    read -rp "Enter the department name: " new_department
     # Check if the department already exists in the operating system
     if department_exists_in_OS "$department_name"; then
         # The department already exists in the system
@@ -190,7 +197,7 @@ create_department() {
 
 # Function to disable/delete a department and adjust user membership
 disable_department() {
-  read -p "Enter the department name to disable: " department_name
+  read -rp "Enter the department name to disable: " department_name
   if department_exists_in_OS "$department_name"; then
     # Get the list of users in the department
     users=$(getent group "$department_name" | cut -d: -f4)
@@ -199,7 +206,7 @@ disable_department() {
     echo "Users in the department $department_name: $users"
 
     # Ask if the user wants to continue
-    read -p "Do you want to delete the group $department_name and adjust the users' membership? (s/n): " response
+    read -rp "Do you want to delete the group $department_name and adjust the users' membership? (s/n): " response
 
     if [ "$response" == "s" ]; then
       # Adjust user membership
@@ -220,11 +227,11 @@ disable_department() {
 }
 
 modify_department() {
-    read -p "Enter the department name to modify: " department_name
+    read -rp "Enter the department name to modify: " department_name
     # Check if the department exists in the operating system
     if department_exists_in_OS "$department_name"; then
         # Request new name for the department
-        read -p "Ingrese el nuevo nombre para el departamento $department_name: " new_department_name
+        read -rp "Ingrese el nuevo nombre para el departamento $department_name: " new_department_name
         # Modify the department name
         sudo groupmod -n "$new_department_name" "$department_name"
         sed -i "s/$department_name/$new_department_name/" "$departments_file"
