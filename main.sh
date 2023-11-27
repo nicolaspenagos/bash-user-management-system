@@ -20,7 +20,7 @@ show_main_menu() {
 # Function to manage users
 manage_users() {
     clear
-    echo "1. Create user" #TODO: No permitir que se creen usuarios con / o \ #TODO: Chequear que el grupo exista antes de crear el usuario
+    echo "1. Create user" #TODO: No permitir que se creen usuarios con / o \
     echo "2. Disable user"
     echo "3. Modify user" #TODO: No permitir que se creen usuarios con / o \
     echo "0. Back to main menu"
@@ -52,8 +52,12 @@ create_user() {
     if id "$new_username" >/dev/null 2>&1; then
         echo "User $new_username already exists. Choose a different username."
     else
-        # Create the user if the user no exists
-        useradd -m -s /bin/bash "$new_username"
+        # Check if a group with the same name exists before creating a new user.
+        if grep -q "$new_username" "/etc/group"; then
+            useradd -m -s /bin/bash "$new_username" -g "$new_username"
+        else 
+            useradd -m -s /bin/bash "$new_username"
+        fi
         passwd "$new_username"
         # Verify if the user exists in the DB
         if grep -q ";$new_username;" "$users_file"; then
