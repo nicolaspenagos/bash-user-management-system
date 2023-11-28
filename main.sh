@@ -68,12 +68,55 @@ create_user() {
                 # Enable user and update password
                 sed -i "/;$new_username;/s/No/Yes/" "$users_file"
                 update_password_in_DB "$new_username"
+                #Update departments of the user
+                update_deparments_of_disabled_user "$new_username"
             else
                 # Save user information to users.txt
                 echo "$(wc -l < $users_file);$new_username;$(grep -E "$new_username:" /etc/shadow | cut -d: -f2);Yes;None" >> $users_file
             fi
             echo "User $new_username created"
         fi
+    fi
+}
+
+#Re-associates all departments the user had when enabled
+update_deparments_of_disabled_user() {
+    username=$1
+    initial_departments=$(grep -E ";$username;" $users_file | cut -d ";" -f5)
+    final_departments=""
+    if [[ "$initial_departments" != "None" ]]; then
+        for department in $(echo "$initial_departments" | tr ":" "\n"); do
+            # Check if the department exists in the operating system
+            if department_exists_in_OS "$department_name"; then
+                usermod -aG "$department" "$username"
+                if [[ "$final_departments" == "" ]]; then
+                    final_departments="$department"
+                else
+                    final_departments="$final_departments:$department"
+                fi
+                add_disabled_user_to_department_in_DB "$username" "$department"
+            fi
+        done
+        sed -i "/;$username;/s/$initial_departments/$final_departments/" "$users_file"
+    fi
+}
+
+#Adds a user that was disabled to a department in the DB
+add_disabled_user_to_department_in_DB() {
+    new_username=$1
+    department_name=$2
+    
+    # Users in the department
+    users=$(grep -E ";$department_name;" $departments_file | cut -d ";" -f4)
+    # Replace : with space
+    users="${users//:/ }"
+    if ! echo "$users" | grep -qw "$new_username"; then
+        if [[ "$users" == "None" ]]; then
+            new_users="$new_username"
+        else
+            new_users="$users:$new_username"
+        fi
+        sed -i "/;$department_name;/s/$users/$new_users/" "$departments_file"
     fi
 }
 
