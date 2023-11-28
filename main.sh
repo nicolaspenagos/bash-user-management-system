@@ -3,7 +3,6 @@
 # Storage files
 users_file="users.txt"
 departments_file="departments.txt"
-assignments_file="assignments.txt"
 logs_file="logs.txt"
 
 # Function to display the main menu
@@ -59,7 +58,7 @@ create_user() {
             # Check if a group with the same name exists before creating a new user.
             if grep -q "^$new_username:" "/etc/group"; then
                 useradd -m -s /bin/bash "$new_username" -g "$new_username"
-            else 
+            else
                 useradd -m -s /bin/bash "$new_username"
             fi
             passwd "$new_username"
@@ -105,7 +104,6 @@ update_deparments_of_disabled_user() {
 add_disabled_user_to_department_in_DB() {
     new_username=$1
     department_name=$2
-    
     # Users in the department
     users=$(grep -E ";$department_name;" $departments_file | cut -d ";" -f4)
     # Replace : with space
@@ -130,7 +128,7 @@ disable_user() {
         # Logic to disable a user
         sed -i "/;$disable_user;/s/Yes/No/" $users_file
         echo "User $disable_user was removed from the system and disabled in the DB"
-    else 
+    else
         echo "User $disable_user does not exists. Choose a different username."
     fi
 }
@@ -156,7 +154,7 @@ modify_user() {
                     # Verify that the user does not exist
                     if id "$new_username" > "/dev/null" 2>&1; then
                         echo "User $new_username already exists. Choose a different username."
-                    else 
+                    else
                         #Update user in the system
                         usermod -l "$new_username" -m -d "/home/$new_username" "$username"
                         #Update user in the DB
@@ -164,7 +162,7 @@ modify_user() {
                         echo "The user was successfully updated"
                     fi
                 fi
-            else 
+            else
                 echo "User $username does not exists. Choose a different username."
             fi
             ;;
@@ -177,11 +175,11 @@ modify_user() {
                 #Update password in the DB
                 update_password_in_DB "$username"
                 echo "The user was successfully updated"
-            else 
+            else
                 echo "User $username does not exists. Choose a different username."
             fi
             ;;
-        3)    
+        3)
             read -rp "Enter the old username: " username
             # Verify if the user exists
             if id "$username" > "/dev/null" 2>&1; then
@@ -193,7 +191,7 @@ modify_user() {
                     # Verify that the user does not exist
                     if id "$new_username" > "/dev/null" 2>&1; then
                         echo "User $new_username already exists. Choose a different username."
-                    else 
+                    else
                         #Update user in the system
                         usermod -l "$new_username" -m -d "/home/$new_username" "$username"
                         passwd "$new_username"
@@ -203,11 +201,11 @@ modify_user() {
                         echo "The user was successfully updated"
                     fi
                 fi
-            else 
+            else
                 echo "User $username does not exists. Choose a different username."
             fi
             ;;
-        0) 
+        0)
             ;;
         *)
             echo "Invalid option"
@@ -231,26 +229,36 @@ update_password_in_DB() {
 create_department() {
     read -rp "Enter the department name: " new_department
     # Check if the department already exists in the operating system
-    if department_exists_in_OS "$new_department"; then
+    if department_exists "$new_department"; then
         # The department already exists in the system
         echo "Department $new_department already exists."
     else
         # Check if the department is disabled in the db
         if department_disabled_in_db "$new_department"; then
-            # Enable department in db
-            sed -i "/$new_department/s/No/Yes/" "$departments_file"
             # Add the department to the system
             sudo addgroup "$new_department"
+            # Enable department in db
+            sed -i "/$new_department/s/No/Yes/" "$departments_file"
+            # Check if there were users associated with the department
+            department_users=$(grep "$new_department" "$departments_file" | cut -d';' -f4)
+            if [ "$department_users" != "None" ]; then
+                # Add users back to the department
+                IFS=':' read -ra users <<< "$department_users"
+                for user in "${users[@]}"; do
+                    # Check if the user exists before adding to the department
+                    if user_exists "$user"; then
+                        sudo adduser "$user" "$new_department"
+                        add_department_to_user_in_DB "$user" "$new_department"
+                    else
+                        echo "User $user doesn't exist, so it won't be re-added to department $new_department."
+                    fi
+                done
+            fi
             echo "Department $new_department re-enabled."
         else
             # The department does not exist in the operating system or the db, add it to the system and the db
             sudo addgroup "$new_department"
-            numero_registro=$(wc -l < "$departments_file")
-            if [ "$numero_registro" -gt 0 ]; then
-                ((numero_registro--))
-            fi
-            ((numero_registro++))
-            echo -e "$numero_registro;$new_department;Yes;None" >> "$departments_file"
+            echo -e "$(wc -l < $users_file);$new_department;Yes;None" >> "$departments_file"
             echo "Department $new_department created."
         fi
     fi
@@ -259,7 +267,7 @@ create_department() {
 # Function to disable/delete a department and adjust user membership
 disable_department() {
   read -rp "Enter the department name to disable: " department_name
-  if department_exists_in_OS "$department_name"; then
+  if department_exists "$department_name"; then
     # Get the list of users in the department
     users=$(getent group "$department_name" | cut -d: -f4)
 
@@ -269,15 +277,16 @@ disable_department() {
     # Ask if the user wants to continue
     read -rp "Do you want to delete the group $department_name and adjust the users' membership? (s/n): " response
 
-    if [ "$response" == "s" ]; then
+    if [[ "$response" =~ [Ss] ]]; then
       # Adjust user membership
-      for user in $users; do
+      for user in $(echo "$users" | tr "," "\n"); do
         sudo deluser "$user" "$department_name"
       done
 
       # Delete department
       sudo delgroup "$department_name"
       sed -i "/$department_name/s/Yes/No/" "$departments_file"
+      remove_department_from_users_in_db "$department_name"
       echo "Department $department_name disabled."
     else
       echo "Operation cancelled."
@@ -302,7 +311,7 @@ modify_department() {
     fi
 }
 
-# Function to check if the group exists
+# Function to check if the department exists
 department_exists_in_OS() {
   grep -q "^$1:" /etc/group
 }
@@ -340,6 +349,74 @@ manage_departments() {
     esac
 }
 
+unassign_user_from_department() {
+    read -rp "Enter the username to unassign: " unassign_user
+    read -rp "Enter the department name: " unassign_department
+    # Verify that the user and department exist
+    if user_exists "$unassign_user" && department_exists "$unassign_department"; then
+        # Check if the user is assigned to the department
+        if user_assigned_to_department "$unassign_user" "$unassign_department" && department_has_user "$unassign_department" "$unassign_user"; then
+            # Remove the user from the department in the file
+            remove_user_from_department_in_db "$unassign_user" "$unassign_department"
+            remove_department_from_user_in_db "$unassign_user" "$unassign_department"
+            # Remove user from department in OS
+            sudo deluser "$unassign_user" "$unassign_department" &>/dev/null
+            echo "Usuario $unassign_user removido del departamento $unassign_department."
+        else
+            echo "El usuario $unassign_user no está asignado al departamento $unassign_department."
+        fi
+    else
+        echo "El usuario o el departamento no existen."
+    fi
+}
+
+remove_department_from_users_in_db() {
+  department=$1
+  sed -i "s/;$department:/;/" "$users_file"
+  sed -i "s/:$department//" "$users_file"
+  sed -i "s/;$department/;None/" "$users_file"
+}
+
+# Function to department from a user
+remove_department_from_user_in_db() {
+  user=$1
+  department=$2
+  # Modificar users.txt
+  sed -i "/;$user;/s/;$department:/;/" "$users_file"
+  sed -i "/;$user;/s/:$department//" "$users_file"
+  sed -i "/;$user;/s/;$department/;None/" "$users_file"
+}
+
+# Function to remove a user from a department
+remove_user_from_department_in_db() {
+  user=$1
+  department=$2
+  # Modificar departments.txt
+  sed -i "/;$department;/s/;$user:/;/" "$departments_file"
+  sed -i "/;$department;/s/:$user//" "$departments_file"
+  sed -i "/;$department;/s/;$user/;None/" "$departments_file"
+}
+
+# Function to check if a user exists
+user_exists() {
+  id "$1" &>/dev/null 2>&1
+}
+
+# Function to check if a department exists
+department_exists() {
+  getent group "$1" &>/dev/null
+}
+
+# Function to check if a user is assigned to a department
+user_assigned_to_department() {
+  id -nG "$1" | grep -q "$2"
+}
+
+# Function to manage user assignments to departments
+department_has_user() {
+  getent group "$1" | cut -d: -f4 | tr ',' '\n' | grep -q "$2"
+}
+
 # Function to manage user assignments to departments
 manage_assignments() {
     clear
@@ -354,11 +431,7 @@ manage_assignments() {
             assign_user_to_department
             ;;
         2)
-            read -rp "Enter the username to unassign: " unassign_user
-            read -rp "Enter the department name: " unassign_department
-            # Logic to unassign a user from a department
-            sed -i "/$unassign_user,$unassign_department/d" "$assignments_file"
-            echo "User $unassign_user unassigned from department $unassign_department"
+            unassign_user_from_department
             ;;
         0)
             ;;
