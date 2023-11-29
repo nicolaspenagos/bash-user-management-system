@@ -634,6 +634,9 @@ manage_logs() {
     echo "1. Filter logs by date"
     echo "2. Filter logs by author username"
     echo "3. Filter logs by action"
+    echo "4. Find the day with most activity (more logs)"
+    echo "5. Find the most active user (more logs)"
+    echo "6. Find the most repeated action"
     echo "0. Back to main menu"
 
     read -rp "Select an option: " logs_option
@@ -648,8 +651,18 @@ manage_logs() {
         3)
             search_logs_by_action
             ;;
+        4) 
+            find_day_with_most_logs
+            ;;
+        5)
+            find_most_active_user
+            ;;
+        6)
+            find_most_repeated_action
+            ;;
         
         0)
+        	
             ;;
         *)
             echo "Invalid option"
@@ -665,7 +678,7 @@ write_log() {
 
     # Check if the log file exists, if not, create it with the header
     if [ ! -e "logs.txt" ]; then
-        echo -e "#;Username;Date;Action;Command" > "logs.txt"
+        echo -e "#;Username;Date;Action" > "logs.txt"
         chmod 777 "logs.txt"
     fi
 
@@ -741,6 +754,73 @@ search_logs_by_action() {
         echo "Log file not found."
     fi
 }
+
+# Function to find the day with the most logs
+find_day_with_most_logs() {
+    # Load logs from logs.txt
+    if [ -e "logs.txt" ]; then
+        # Extract the day from each log entry using awk
+        days=$(awk -F ';' '{split($3, date, " "); print date[1]}' "logs.txt")
+
+        # Count occurrences of each day and find the day with the most logs
+        most_logs_day=$(echo "$days" | sort | uniq -c | sort -nr | head -n 1)
+
+        # Display the day with the most logs and the number of logs
+        if [ -n "$most_logs_day" ]; then
+            echo -e "Day with the most logs: $most_logs_day"
+        else
+            echo "No logs found."
+        fi
+    else
+        echo "Log file not found."
+    fi
+}
+
+# Function to find the most repeated action
+find_most_repeated_action() {
+    # Load logs from logs.txt
+    if [ -e "logs.txt" ]; then
+        # Extract the action from each log entry using awk
+        actions=$(awk -F ':' '{print $NF}' "logs.txt")
+
+        # Count occurrences of each action and find the most repeated action
+        most_repeated_action=$(echo "$actions" | sort | uniq -c | sort -nr | head -n 1)
+
+        # Display the most repeated action and the number of occurrences
+        if [ -n "$most_repeated_action" ]; then
+            echo -e "Most repeated action: $most_repeated_action"
+        else
+            echo "No logs found."
+        fi
+    else
+        echo "Log file not found."
+    fi
+}
+
+# Function to find the most active user
+find_most_active_user() {
+    # Load logs from logs.txt
+    if [ -e "logs.txt" ]; then
+        # Extract the username from each log entry using awk
+        usernames=$(awk -F ';' '{print $2}' "logs.txt")
+
+        # Count occurrences of each username and find the most active user
+        most_active_user=$(echo "$usernames" | sort | uniq -c | sort -nr | head -n 1)
+
+        # Display the most active user and the number of occurrences
+        if [ -n "$most_active_user" ]; then
+            echo -e "Most active user: $most_active_user"
+        else
+            echo "No logs found."
+        fi
+    else
+        echo "Log file not found."
+    fi
+}
+
+
+
+
 
 
 #LOGS_END
