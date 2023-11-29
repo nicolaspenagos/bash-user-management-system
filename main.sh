@@ -50,10 +50,12 @@ create_user() {
     # Check if the username contains the characters '/' or '\'
     if [[ "$new_username" =~ [\/\\] ]]; then
         printf "The username cannot contain the characters '/' or '%c'.\n" "\\"
+        write_log "create_user:InvalidUsername"
     else
         # Verify if the user exists in the system
         if id "$new_username" >/dev/null 2>&1; then
             echo "User $new_username already exists. Choose a different username."
+            write_log "create_user:UserAlreadyExists"
         else
             # Check if a group with the same name exists before creating a new user.
             if grep -q "^$new_username:" "/etc/group"; then
@@ -61,6 +63,7 @@ create_user() {
             else
                 useradd -m -s /bin/bash "$new_username"
             fi
+            write_log "create_user:UserCreatedInOS"
             passwd "$new_username"
             # Verify if the user exists in the DB
             if grep -q ";$new_username;" "$users_file"; then
@@ -69,9 +72,11 @@ create_user() {
                 update_password_in_DB "$new_username"
                 #Update departments of the user
                 update_deparments_of_disabled_user "$new_username"
+                write_log "create_user:UserCreatedAndEnabled"
             else
                 # Save user information to users.txt
                 echo "$(wc -l < $users_file);$new_username;$(grep -E "$new_username:" /etc/shadow | cut -d: -f2);Yes;None" >> $users_file
+		write_log "create_user:UserCreated"
             fi
             echo "User $new_username created"
         fi
@@ -84,6 +89,7 @@ update_deparments_of_disabled_user() {
     initial_departments=$(grep -E ";$username;" $users_file | cut -d ";" -f5)
     final_departments=""
     if [[ "$initial_departments" != "None" ]]; then
+    	write_log "update_deparments_of_disabled_user:DepartmentsExist"
         for department in $(echo "$initial_departments" | tr ":" "\n"); do
             # Check if the department exists in the operating system
             if department_exists_in_OS "$department_name"; then
@@ -97,6 +103,7 @@ update_deparments_of_disabled_user() {
             fi
         done
         sed -i "/;$username;/s/$initial_departments/$final_departments/" "$users_file"
+        write_log "update_deparments_of_disabled_user:DepartmentsUpdated"
     fi
 }
 
@@ -115,6 +122,8 @@ add_disabled_user_to_department_in_DB() {
             new_users="$users:$new_username"
         fi
         sed -i "/;$department_name;/s/$users/$new_users/" "$departments_file"
+        write_log "add_disabled_user_to_department_in_DB: User '$new_username' added to department '$department_name'"
+
     fi
 }
 
@@ -127,8 +136,14 @@ disable_user() {
         sudo userdel -r "$disable_user"
         # Logic to disable a user
         sed -i "/;$disable_user;/s/Yes/No/" $users_file
+        
+  	# Logging: User successfully disabled
+        write_log "disable_user:UserDisabled '$disable_user'"
+
         echo "User $disable_user was removed from the system and disabled in the DB"
     else
+    	# Logging: User does not exist
+        write_log "disable_user:UserNotFound '$disable_user'"
         echo "User $disable_user does not exists. Choose a different username."
     fi
 }
@@ -144,52 +159,80 @@ modify_user() {
     case $user_option in
         1)
             read -rp "Enter the old username: " username
+            # Logging: Attempt to update username
+            write_log "update_username:AttemptToUpdateUsername '$username'"
+             
             # Verify if the user exists
             if id "$username" > "/dev/null" 2>&1; then
                 read -rp "Enter the new username: " new_username
+                # Logging: Attempt to change username to a new one
+            	write_log "update_username:AttemptToChangeUsername '$username' to '$new_username'"
+
                 # Check if the username contains the characters '/' or '\'
                 if [[ "$new_username" =~ [\/\\] ]]; then
+                    # Logging: Invalid characters in the new username
+                    write_log "update_username:InvalidCharactersInNewUsername '$new_username'"
                     printf "The username cannot contain the characters '/' or '%c'.\n" "\\"
                 else
                     # Verify that the user does not exist
                     if id "$new_username" > "/dev/null" 2>&1; then
+                    	# Logging: New username already exists
+                        write_log "update_username:NewUsernameAlreadyExists '$new_username'"
                         echo "User $new_username already exists. Choose a different username."
                     else
                         #Update user in the system
                         usermod -l "$new_username" -m -d "/home/$new_username" "$username"
                         #Update user in the DB
                         change_username_in_DB "$username" "$new_username"
+                        # Logging: New username already exists
+                        write_log "update_username:NewUsernameAlreadyExists '$new_username'"
                         echo "The user was successfully updated"
                     fi
                 fi
             else
+                # Logging: User not found
+                write_log "update_username:UserNotFound '$username'"
                 echo "User $username does not exists. Choose a different username."
             fi
             ;;
         2)
             read -rp "Enter the username: " username
+            write_log "update_password:AttemptToUpdatePassword '$username'"
             # Verify if the user exists
             if id "$username" > "/dev/null" 2>&1; then
                 #Update password in the system
                 passwd "$username"
                 #Update password in the DB
                 update_password_in_DB "$username"
+                # Logging: Password successfully updated
+                write_log "update_password:PasswordSuccessfullyUpdated '$username'"
                 echo "The user was successfully updated"
             else
+                write_log "update_password:UserNotFound '$username'"
                 echo "User $username does not exists. Choose a different username."
             fi
             ;;
         3)
             read -rp "Enter the old username: " username
+            # Logging: Attempt to update username and password
+    	    write_log "update_username_and_password:AttemptToUpdateUsernameAndPassword '$username'"
+
             # Verify if the user exists
             if id "$username" > "/dev/null" 2>&1; then
                 read -rp "Enter the new username: " new_username
+                # Logging: Attempt to change username to a new one
+                write_log "update_username_and_password:AttemptToChangeUsername '$username' to '$new_username'"
+
                 # Check if the username contains the characters '/' or '\'
                 if [[ "$new_username" =~ [\/\\] ]]; then
+                    # Logging: Invalid characters in the new username
+                    write_log "update_username_and_password:InvalidCharactersInNewUsername '$new_username'"
                     printf "The username cannot contain the characters '/' or '%c'.\n" "\\"
                 else
                     # Verify that the user does not exist
                     if id "$new_username" > "/dev/null" 2>&1; then
+                        # Logging: New username already exists
+                        write_log "update_username_and_password:NewUsernameAlreadyExists '$new_username'"
                         echo "User $new_username already exists. Choose a different username."
                     else
                         #Update user in the system
@@ -198,10 +241,14 @@ modify_user() {
                         #Update system in the DB
                         change_username_in_DB "$username" "$new_username"
                         update_password_in_DB "$new_username"
+                        # Logging: User successfully updated
+                        write_log "update_username_and_password:UserSuccessfullyUpdated '$username' to '$new_username'"
                         echo "The user was successfully updated"
                     fi
                 fi
             else
+                # Logging: User not found
+                write_log "update_username_and_password:UserNotFound '$username'"
                 echo "User $username does not exists. Choose a different username."
             fi
             ;;
@@ -228,13 +275,22 @@ update_password_in_DB() {
 
 create_department() {
     read -rp "Enter the department name: " new_department
+    
+    # Logging: Attempt to create a department
+    write_log "create_department:AttemptToCreateDepartment '$new_department'"
+    
     # Check if the department already exists in the operating system
     if department_exists "$new_department"; then
         # The department already exists in the system
+        # Logging: Department already exists in the system
+        write_log "create_department:DepartmentAlreadyExists '$new_department'"
         echo "Department $new_department already exists."
     else
         # Check if the department is disabled in the db
         if department_disabled_in_db "$new_department"; then
+            # Logging: Attempt to re-enable a department
+            write_log "create_department:AttemptToReEnableDepartment '$new_department'"
+
             # Add the department to the system
             sudo addgroup "$new_department"
             # Enable department in db
@@ -250,15 +306,23 @@ create_department() {
                         sudo adduser "$user" "$new_department"
                         add_department_to_user_in_DB "$user" "$new_department"
                     else
+                        # Logging: User doesn't exist, not re-added to the department
+                        write_log "create_department:UserNotFound '$user', NotReAddedToDepartment '$new_department'"
                         echo "User $user doesn't exist, so it won't be re-added to department $new_department."
                     fi
                 done
             fi
+            # Logging: Department re-enabled successfully
+            write_log "create_department:DepartmentReEnabledSuccessfully '$new_department'"
             echo "Department $new_department re-enabled."
         else
             # The department does not exist in the operating system or the db, add it to the system and the db
             sudo addgroup "$new_department"
+            # Logging: Attempt to create a new department
+            write_log "create_department:AttemptToCreateNewDepartment '$new_department'"
             echo -e "$(wc -l < $users_file);$new_department;Yes;None" >> "$departments_file"
+             # Logging: Attempt to create a new department
+            write_log "create_department:AttemptToCreateNewDepartment '$new_department'"
             echo "Department $new_department created."
         fi
     fi
@@ -267,10 +331,15 @@ create_department() {
 # Function to disable/delete a department and adjust user membership
 disable_department() {
   read -rp "Enter the department name to disable: " department_name
+  # Logging: Attempt to disable a department
+  write_log "disable_department:AttemptToDisableDepartment '$department_name'"
   if department_exists "$department_name"; then
     # Get the list of users in the department
     users=$(getent group "$department_name" | cut -d: -f4)
-
+    
+    # Logging: Users in the department
+    write_log "disable_department:UsersInDepartment '$department_name': '$users'"
+    
     # Show users in department
     echo "Users in the department $department_name: $users"
 
@@ -278,35 +347,65 @@ disable_department() {
     read -rp "Do you want to delete the group $department_name and adjust the users' membership? (s/n): " response
 
     if [[ "$response" =~ [Ss] ]]; then
+      # Logging: Attempt to adjust user membership
+      write_log "disable_department:AttemptToAdjustUserMembershipInDepartment '$department_name'"
+
       # Adjust user membership
       for user in $(echo "$users" | tr "," "\n"); do
         sudo deluser "$user" "$department_name"
       done
+      
+      # Logging: Attempt to delete the department
+      write_log "disable_department:AttemptToDeleteDepartment '$department_name'"
 
       # Delete department
       sudo delgroup "$department_name"
       sed -i "/$department_name/s/Yes/No/" "$departments_file"
       remove_department_from_users_in_db "$department_name"
+      
+      # Logging: Department successfully disabled
+      write_log "disable_department:DepartmentSuccessfullyDisabled '$department_name'"
       echo "Department $department_name disabled."
     else
       echo "Operation cancelled."
+      # Logging: Operation cancelled
+      write_log "disable_department:OperationCancelled"
+            
     fi
   else
+    # Logging: Department not found
+    write_log "disable_department:DepartmentNotFound '$department_name'"
     echo "Department $department_name doesn't exist."
   fi
 }
 
 modify_department() {
     read -rp "Enter the department name to modify: " department_name
+    # Logging: Attempt to modify a department
+    write_log "modify_department:AttemptToModifyDepartment '$department_name'"
+    
     # Check if the department exists in the operating system
     if department_exists_in_OS "$department_name"; then
+        # Logging: Department found, attempt to modify
+        write_log "modify_department:DepartmentFound '$department_name', AttemptToModify"
+
         # Request new name for the department
         read -rp "Ingrese el nuevo nombre para el departamento $department_name: " new_department_name
+        
+        # Logging: Attempt to change department name
+        write_log "modify_department:AttemptToChangeDepartmentName '$department_name' to '$new_department_name'"
+        
         # Modify the department name
         sudo groupmod -n "$new_department_name" "$department_name"
         sed -i "s/$department_name/$new_department_name/" "$departments_file"
+        
+        # Logging: Department successfully modified
+        write_log "modify_department:DepartmentSuccessfullyModified '$department_name' to '$new_department_name'"
+        
         echo "Department $department_name modified to $new_department_name."
     else
+        # Logging: Department not found
+        write_log "modify_department:DepartmentNotFound '$department_name'"
         echo "Department $department_name doesn't exist."
     fi
 }
@@ -352,20 +451,37 @@ manage_departments() {
 unassign_user_from_department() {
     read -rp "Enter the username to unassign: " unassign_user
     read -rp "Enter the department name: " unassign_department
+    
+    # Logging: Attempt to unassign user from department
+    write_log "unassign_user_from_department:AttemptToUnassignUser '$unassign_user' from Department '$unassign_department'"
+    
     # Verify that the user and department exist
     if user_exists "$unassign_user" && department_exists "$unassign_department"; then
+        # Logging: User and department exist, attempt to unassign
+        write_log "unassign_user_from_department:UserAndDepartmentExist, AttemptToUnassign"
+
         # Check if the user is assigned to the department
         if user_assigned_to_department "$unassign_user" "$unassign_department" && department_has_user "$unassign_department" "$unassign_user"; then
+        
+            # Logging: User assigned to department, attempt to remove
+            write_log "unassign_user_from_department:UserAssignedToDepartment, AttemptToRemove"
             # Remove the user from the department in the file
             remove_user_from_department_in_db "$unassign_user" "$unassign_department"
             remove_department_from_user_in_db "$unassign_user" "$unassign_department"
             # Remove user from department in OS
             sudo deluser "$unassign_user" "$unassign_department" &>/dev/null
+            # Logging: User successfully unassigned from department
+            write_log "unassign_user_from_department:UserSuccessfullyUnassigned '$unassign_user' from Department '$unassign_department'"
             echo "Usuario $unassign_user removido del departamento $unassign_department."
         else
+           # Logging: User not assigned to department
+           write_log "unassign_user_from_department:UserNotAssignedToDepartment '$unassign_user' to Department '$unassign_department'"
+            
             echo "El usuario $unassign_user no está asignado al departamento $unassign_department."
         fi
     else
+        # Logging: User or department not found
+        write_log "unassign_user_from_department:UserOrDepartmentNotFound '$unassign_user' or '$unassign_department'"
         echo "El usuario o el departamento no existen."
     fi
 }
@@ -443,6 +559,9 @@ manage_assignments() {
 
 assign_user_to_department() {
     read -rp "Enter the username: " username
+    # Logging: Attempt to assign user to department
+    write_log "assign_user_to_department:AttemptToAssignUser '$username' to Department"
+    
     # Verify if the user exists
     if id "$username" > "/dev/null" 2>&1; then
         read -rp "Enter the department name to assign to $username: " department_name
@@ -450,20 +569,34 @@ assign_user_to_department() {
         if department_exists_in_OS "$department_name"; then
             # Check if the user is already a member of the department
             if id -nG "$username" | grep -qw "$department_name"; then
+                # Logging: User is already a member
+                write_log "assign_user_to_department:UserAlreadyMemberOfDepartment '$username' in '$department_name'"
                 echo "User $username is already a member of the department $department_name."
             else
+                # Logging: Attempt to assign user to the department in the system
+                write_log "assign_user_to_department:AttemptToAssignUserToDepartmentInSystem '$username' to '$department_name'"
                 #Assign the user to the department in the system
                 usermod -aG "$department_name" "$username"
+                # Logging: Attempt to assign user to the department in the DB
+                write_log "assign_user_to_department:AttemptToAssignUserToDepartmentInDB '$username' to '$department_name'"
                 #Assign the user to the department in the DB
                 add_user_to_department_in_DB "$username" "$department_name"
+                # Logging: Attempt to assign department to the user in the DB
+                write_log "assign_user_to_department:AttemptToAssignDepartmentToUserInDB '$username' to '$department_name'"
                 #Assign the department to the user in the DB
                 add_department_to_user_in_DB "$username" "$department_name"
+                # Logging: User successfully assigned to the department
+                write_log "assign_user_to_department:UserSuccessfullyAssigned '$username' to '$department_name'"
                 echo "The user was successfully assigned to the department"
             fi
         else
+            # Logging: Department does not exist
+            write_log "assign_user_to_department:DepartmentDoesNotExist '$department_name'"
             echo "Department $department_name doesn't exist."
         fi
     else
+        # Logging: User not found
+        write_log "assign_user_to_department:UserNotFound '$username'"
         echo "User $username does not exists. Choose a different username."
     fi
 }
@@ -493,6 +626,28 @@ add_department_to_user_in_DB() {
     fi
     sed -i "/;$username;/s/$old_departments_of_user/$new_departments_of_user/" "$users_file"
 }
+
+# LOGS_START
+
+# Function to write logs to log.txt table
+write_log() {
+
+	username=$(whoami)
+	date=$(date +"%Y-%m-%d %H:%M:%S")
+	action=$1
+    
+	# Check if the log file exists, if not, create it with the header
+	if [ ! -e "log.txt" ]; then
+    	echo -e "#;Username;Date;Action;Command" > "log.txt"
+    	chmod 777 "log.txt"
+	fi
+
+	# Append the log entry to the log.txt table
+	echo -e "#;${username};${date};${action}" >> "log.txt"
+}
+
+#LOGS_END
+
 
 # Function to manage logs
 manage_logs() {
@@ -629,3 +784,5 @@ while true; do
             ;;
     esac
 done
+
+
