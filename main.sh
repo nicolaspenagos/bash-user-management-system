@@ -5,6 +5,9 @@ users_file="users.txt"
 departments_file="departments.txt"
 logs_file="logs.txt"
 
+# Path to the current project
+directory="./"
+
 # Function to display the main menu
 show_main_menu() {
     echo "1. User Management"
@@ -819,10 +822,6 @@ find_most_active_user() {
 }
 
 
-
-
-
-
 #LOGS_END
 
 
@@ -840,23 +839,51 @@ manage_activities() {
     case $activities_option in
         1)
             # Logic to track activities in memory
-            echo "Function not implemented"
+            track_memory_activities
             ;;
         2)
             # Logic to track activities in processes
-            echo "Function not implemented"
-            ;;
+            track_process_activities            ;;
         3)
             # Logic to track activities in files
-            echo "Function not implemented"
+            track_file_activities
             ;;
         0)
+            show_main_menu
             ;;
         *)
             echo "Invalid option"
             ;;
     esac
 }
+
+track_memory_activities() {
+    # Obtener información sobre los procesos en ejecución
+    ps aux > memory_activities.log
+    echo "Memory activities tracked and saved to memory_activities.log"
+    write_log "track_memory_activities:MemoryActivitiesTracked"
+}
+
+track_process_activities() {
+    # Obtener información sobre los procesos en tiempo real
+    top -b -n 1 > process_activities.log
+    echo "Process activities tracked and saved to process_activities.log"
+    write_log "track_process_activities:ProcessActivitiesTracked"
+}
+
+track_file_activities() {
+    files_to_track=("users.txt" "departments.txt")  # Lista de archivos a rastrear
+
+    for file in "${files_to_track[@]}"; do
+        cat "$directory$file" >> file_activities.log
+    done
+
+    echo "File activities in $directory tracked and saved to file_activities.log"
+    write_log "track_file_activities:FileActivitiesTracked"
+}
+
+
+
 
 # Function to manage the system
 manage_system() {
