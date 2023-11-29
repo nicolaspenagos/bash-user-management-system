@@ -321,8 +321,8 @@ create_department() {
             # Logging: Attempt to create a new department
             write_log "create_department:AttemptToCreateNewDepartment '$new_department'"
             echo -e "$(wc -l < $users_file);$new_department;Yes;None" >> "$departments_file"
-             # Logging: Attempt to create a new department
-            write_log "create_department:AttemptToCreateNewDepartment '$new_department'"
+            # Logging: Department created successfully
+            write_log "create_department:DepartmentCreatedSuccessfully '$new_department'"
             echo "Department $new_department created."
         fi
     fi
@@ -573,12 +573,11 @@ assign_user_to_department() {
                 write_log "assign_user_to_department:UserAlreadyMemberOfDepartment '$username' in '$department_name'"
                 echo "User $username is already a member of the department $department_name."
             else
-                # Logging: Attempt to assign user to the department in the system
-                write_log "assign_user_to_department:AttemptToAssignUserToDepartmentInSystem '$username' to '$department_name'"
+      
                 #Assign the user to the department in the system
                 usermod -aG "$department_name" "$username"
                 # Logging: Attempt to assign user to the department in the DB
-                write_log "assign_user_to_department:AttemptToAssignUserToDepartmentInDB '$username' to '$department_name'"
+           
                 #Assign the user to the department in the DB
                 add_user_to_department_in_DB "$username" "$department_name"
                 # Logging: Attempt to assign department to the user in the DB
@@ -629,40 +628,27 @@ add_department_to_user_in_DB() {
 
 # LOGS_START
 
-# Function to write logs to log.txt table
-write_log() {
-
-	username=$(whoami)
-	date=$(date +"%Y-%m-%d %H:%M:%S")
-	action=$1
-    
-	# Check if the log file exists, if not, create it with the header
-	if [ ! -e "log.txt" ]; then
-    	echo -e "#;Username;Date;Action;Command" > "log.txt"
-    	chmod 777 "log.txt"
-	fi
-
-	# Append the log entry to the log.txt table
-	echo -e "#;${username};${date};${action}" >> "log.txt"
-}
-
-#LOGS_END
-
-
 # Function to manage logs
 manage_logs() {
     clear
-    echo "1. Specific search in logs"
+    echo "1. Filter logs by date"
+    echo "2. Filter logs by author username"
+    echo "3. Filter logs by action"
     echo "0. Back to main menu"
 
     read -rp "Select an option: " logs_option
 
     case $logs_option in
         1)
-            read -rp "Enter the search term: " search_term
-            # Logic to search in logs
-            grep "$search_term" "$logs_file"
+            filter_logs_by_date
             ;;
+        2)  
+            filter_logs_by_username
+            ;;   
+        3)
+            search_logs_by_action
+            ;;
+        
         0)
             ;;
         *)
@@ -670,6 +656,96 @@ manage_logs() {
             ;;
     esac
 }
+
+# Function to write logs to logs.txt table
+write_log() {
+    username=$(whoami)
+    date=$(date +"%Y-%m-%d %H:%M:%S")
+    action=$1
+
+    # Check if the log file exists, if not, create it with the header
+    if [ ! -e "logs.txt" ]; then
+        echo -e "#;Username;Date;Action;Command" > "logs.txt"
+        chmod 777 "logs.txt"
+    fi
+
+    # Count the number of lines in the log file to determine the index
+    index=$(wc -l < "logs.txt")
+
+    # Append the log entry to the logs.txt table with the index
+    echo -e "${index};${username};${date};${action}" >> "logs.txt"
+}
+
+# Function to load and filter logs by date without hours
+filter_logs_by_date() {
+    read -rp "Enter the date (YYYY-MM-DD): " filter_date
+
+    # Validate the date format
+    if [[ ! $filter_date =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]]; then
+        echo "Invalid date format. Please use the format YYYY-MM-DD."
+        return
+    fi
+
+    # Load logs from logs.txt
+    if [ -e "logs.txt" ]; then
+        # Filter logs by date without hours
+        filtered_logs=$(awk -v date="$filter_date" -F ";" '$3 ~ date { print }' "logs.txt")
+
+        # Display filtered logs
+        if [ -n "$filtered_logs" ]; then
+            echo -e "Filtered logs for date $filter_date:\n$filtered_logs"
+        else
+            echo "No logs found for the specified date."
+        fi
+    else
+        echo "Log file not found."
+    fi
+}
+
+# Function to load and filter logs by username
+filter_logs_by_username() {
+    read -rp "Enter the username to filter: " filter_username
+
+    # Load logs from logs.txt
+    if [ -e "logs.txt" ]; then
+        # Filter logs by username
+        filtered_logs=$(awk -v username="$filter_username" -F ";" '$2 ~ username { print }' "logs.txt")
+
+        # Display filtered logs
+        if [ -n "$filtered_logs" ]; then
+            echo -e "Filtered logs for username $filter_username:\n$filtered_logs"
+        else
+            echo "No logs found for the specified username."
+        fi
+    else
+        echo "Log file not found."
+    fi
+}
+
+# Function to search logs by action or partial action
+search_logs_by_action() {
+    read -rp "Enter the action or partial action to search: " search_action
+
+    # Load logs from logs.txt
+    if [ -e "logs.txt" ]; then
+        # Search logs by action or partial action
+        matched_logs=$(grep -i "$search_action" "logs.txt")
+
+        # Display matched logs
+        if [ -n "$matched_logs" ]; then
+            echo -e "Logs matching '$search_action':\n$matched_logs"
+        else
+            echo "No logs found for the specified action or partial action."
+        fi
+    else
+        echo "Log file not found."
+    fi
+}
+
+
+#LOGS_END
+
+
 
 # Function to manage system activities
 manage_activities() {
