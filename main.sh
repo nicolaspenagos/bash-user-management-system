@@ -858,21 +858,21 @@ manage_activities() {
 }
 
 track_memory_activities() {
-    # Obtener información sobre los procesos en ejecución
+    # Retrieve information about running processes
     ps aux > memory_activities.log
     echo "Memory activities tracked and saved to memory_activities.log"
     write_log "track_memory_activities:MemoryActivitiesTracked"
 }
 
 track_process_activities() {
-    # Obtener información sobre los procesos en tiempo real
+    # Retrieve real-time information about running processes
     top -b -n 1 > process_activities.log
     echo "Process activities tracked and saved to process_activities.log"
     write_log "track_process_activities:ProcessActivitiesTracked"
 }
 
 track_file_activities() {
-    files_to_track=("users.txt" "departments.txt")  # Lista de archivos a rastrear
+    files_to_track=("users.txt" "departments.txt")  # List of files to track
 
     for file in "${files_to_track[@]}"; do
         cat "$directory$file" >> file_activities.log
@@ -897,7 +897,7 @@ manage_system() {
     case $system_option in
         1)
             # Logic to monitor system status
-            echo "Function not implemented"
+            monitor_system
             ;;
         2)
             # Logic to create alert report
@@ -910,6 +910,32 @@ manage_system() {
             ;;
     esac
 }
+
+
+# Function to monitor the overall system state
+monitor_system() {
+    # Monitor memory activity
+    ps aux > memory_activities.log
+    echo "Memory activities tracked and saved to memory_activities.log"
+    write_log "monitor_system:MemoryActivitiesTracked"
+
+    # Monitor process activity
+    track_process_activities
+
+    # Monitor file activity in the specified directory
+    ls -l "$directory" > file_activities.log
+    echo "File activities in $directory tracked and saved to file_activities.log"
+    write_log "monitor_system:FileActivitiesTracked"
+}
+
+# Main loop to execute the system monitoring
+while true; do
+    monitor_system
+
+    # Pause to allow the user to view the results before monitoring again
+    read -p "Presione Enter para continuar el monitoreo..."
+done
+
 
 create_tables() {
   if [ ! -e "$users_file" ]; then
