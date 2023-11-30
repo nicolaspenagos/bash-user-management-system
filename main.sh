@@ -47,6 +47,7 @@ manage_users() {
 }
 
 create_user() {
+    local new_username
     read -rp "Enter the username: " new_username
 
     # Check if the username contains the characters '/' or '\'
@@ -87,9 +88,10 @@ create_user() {
 
 #Re-associates all departments the user had when enabled
 update_deparments_of_disabled_user() {
-    username=$1
+    local username=$1
+    local initial_departments
     initial_departments=$(grep -E ";$username;" $users_file | cut -d ";" -f5)
-    final_departments=""
+    local final_departments=""
     if [[ "$initial_departments" != "None" ]]; then
         write_log "update_deparments_of_disabled_user:DepartmentsExist"
         for department in $(echo "$initial_departments" | tr ":" "\n"); do
@@ -111,9 +113,11 @@ update_deparments_of_disabled_user() {
 
 #Adds a user that was disabled to a department in the DB
 add_disabled_user_to_department_in_DB() {
-    new_username=$1
-    department_name=$2
+    local new_username=$1
+    local department_name=$2
     # Users in the department
+    local users
+    local new_users
     users=$(grep -E ";$department_name;" $departments_file | cut -d ";" -f4)
     # Replace : with space
     users="${users//:/ }"
@@ -125,11 +129,11 @@ add_disabled_user_to_department_in_DB() {
         fi
         sed -i "/;$department_name;/s/$users/$new_users/" "$departments_file"
         write_log "add_disabled_user_to_department_in_DB: User '$new_username' added to department '$department_name'"
-
     fi
 }
 
 disable_user() {
+    local disable_user
     read -rp "Enter the username to disable: " disable_user
 
     # Verify if the user exists
@@ -138,6 +142,7 @@ disable_user() {
         sudo userdel -r "$disable_user"
         # Logic to disable a user
         sed -i "/;$disable_user;/s/Yes/No/" $users_file
+        remove_user_from_departments "$disable_user"
 
         # Logging: User successfully disabled
         write_log "disable_user:UserDisabled '$disable_user'"
@@ -150,13 +155,30 @@ disable_user() {
     fi
 }
 
+remove_user_from_departments() {
+    local username=$1
+    local departments
+    departments=$(grep -E ";$username;" $users_file | cut -d ";" -f5)
+    if [[ "$departments" != "None" ]]; then
+        for department in $(echo "$departments" | tr ":" "\n"); do
+            remove_user_from_department_in_db "$username" "$department"
+
+            # Logging: User successfully removed from department
+            write_log "remove_user_from_departments:UserSuccessfullyRemovedFromDepartment '$username' from '$department'"
+        done
+    fi
+}
+
 modify_user() {
     echo "1. Change user name"
     echo "2. Change password"
     echo "3. Change username and password"
     echo "0. Back to main menu"
 
+    local user_option
     read -rp "Select an option: " user_option
+    local username
+    local new_username
 
     case $user_option in
     1)
@@ -185,7 +207,7 @@ modify_user() {
                     #Update user in the system
                     usermod -l "$new_username" -m -d "/home/$new_username" "$username"
                     #Update user in the DB
-                    change_username_in_DB "$username" "$new_username"
+                    change_username_in_dbs "$username" "$new_username"
                     # Logging: New username already exists
                     write_log "update_username:NewUsernameAlreadyExists '$new_username'"
                     echo "The user was successfully updated"
@@ -241,7 +263,7 @@ modify_user() {
                     usermod -l "$new_username" -m -d "/home/$new_username" "$username"
                     passwd "$new_username"
                     #Update system in the DB
-                    change_username_in_DB "$username" "$new_username"
+                    change_username_in_dbs "$username" "$new_username"
                     update_password_in_DB "$new_username"
                     # Logging: User successfully updated
                     write_log "update_username_and_password:UserSuccessfullyUpdated '$username' to '$new_username'"
@@ -261,17 +283,39 @@ modify_user() {
     esac
 }
 
-change_username_in_DB() {
-    old_username=$1
-    new_username=$2
+change_username_in_dbs() {
+    local old_username=$1
+    local new_username=$2
+    local departments
+    departments=$(grep -E ";$old_username;" $users_file | cut -d ";" -f5)
+    change_username_in_users_DB "$old_username" "$new_username"
+    for department in $(echo "$departments" | tr ":" "\n"); do
+        change_username_in_departments_DB "$old_username" "$new_username" "$department"
+    done
+}
+
+change_username_in_users_DB() {
+    local old_username=$1
+    local new_username=$2
     sed -i "/;$old_username;/s/$old_username/$new_username/" $users_file
 }
 
+change_username_in_departments_DB() {
+    local old_username=$1
+    local new_username=$2
+    local department=$3
+    sed -i "/;$department;/s/;$old_username:/;$new_username:/" "$departments_file"
+    sed -i "/;$department;/s/:$old_username/:$new_username/" "$departments_file"
+    sed -i "/;$department;/s/;$old_username/;$new_username/" "$departments_file"
+}
+
 update_password_in_DB() {
-    username=$1
-    old_hashed_password=$(grep -E ";$new_username;" $users_file | cut -d ";" -f3)
-    hashed_password=$(grep -E "$new_username:" /etc/shadow | cut -d: -f2)
-    sed -i "/;$new_username;/s#$old_hashed_password#$hashed_password#" "$users_file"
+    local username=$1
+    local old_hashed_password
+    local hashed_password
+    old_hashed_password=$(grep -E ";$username;" $users_file | cut -d ";" -f3)
+    hashed_password=$(grep -E "$username:" /etc/shadow | cut -d: -f2)
+    sed -i "/;$username;/s#$old_hashed_password#$hashed_password#" "$users_file"
 }
 
 create_department() {
@@ -321,7 +365,7 @@ create_department() {
             sudo addgroup "$new_department"
             # Logging: Attempt to create a new department
             write_log "create_department:AttemptToCreateNewDepartment '$new_department'"
-            echo -e "$(wc -l <$users_file);$new_department;Yes;None" >>"$departments_file"
+            echo "$(wc -l <$departments_file);$new_department;Yes;None" >>"$departments_file"
             # Logging: Department created successfully
             write_log "create_department:DepartmentCreatedSuccessfully '$new_department'"
             echo "Department $new_department created."
@@ -505,8 +549,8 @@ remove_department_from_user_in_db() {
 
 # Function to remove a user from a department
 remove_user_from_department_in_db() {
-    user=$1
-    department=$2
+    local user=$1
+    local department=$2
     # Modificar departments.txt
     sed -i "/;$department;/s/;$user:/;/" "$departments_file"
     sed -i "/;$department;/s/:$user//" "$departments_file"
@@ -557,34 +601,36 @@ manage_assignments() {
 }
 
 assign_user_to_department() {
-    read -rp "Enter the username: " username
+    local username_to_assign
+    read -rp "Enter the username: " username_to_assign
     # Logging: Attempt to assign user to department
-    write_log "assign_user_to_department:AttemptToAssignUser '$username' to Department"
+    write_log "assign_user_to_department:AttemptToAssignUser '$username_to_assign' to Department"
 
     # Verify if the user exists
-    if id "$username" >"/dev/null" 2>&1; then
-        read -rp "Enter the department name to assign to $username: " department_name
+    if id "$username_to_assign" >"/dev/null" 2>&1; then
+        local department_name
+        read -rp "Enter the department name to assign to $username_to_assign: " department_name
         # Check if the department exists in the operating system
         if department_exists_in_OS "$department_name"; then
             # Check if the user is already a member of the department
-            if id -nG "$username" | grep -qw "$department_name"; then
+            if id -nG "$username_to_assign" | grep -qw "$department_name"; then
                 # Logging: User is already a member
-                write_log "assign_user_to_department:UserAlreadyMemberOfDepartment '$username' in '$department_name'"
-                echo "User $username is already a member of the department $department_name."
+                write_log "assign_user_to_department:UserAlreadyMemberOfDepartment '$username_to_assign' in '$department_name'"
+                echo "User $username_to_assign is already a member of the department $department_name."
             else
 
                 #Assign the user to the department in the system
-                usermod -aG "$department_name" "$username"
+                usermod -aG "$department_name" "$username_to_assign"
                 # Logging: Attempt to assign user to the department in the DB
 
                 #Assign the user to the department in the DB
-                add_user_to_department_in_DB "$username" "$department_name"
+                add_user_to_department_in_DB "$username_to_assign" "$department_name"
                 # Logging: Attempt to assign department to the user in the DB
-                write_log "assign_user_to_department:AttemptToAssignDepartmentToUserInDB '$username' to '$department_name'"
+                write_log "assign_user_to_department:AttemptToAssignDepartmentToUserInDB '$username_to_assign' to '$department_name'"
                 #Assign the department to the user in the DB
-                add_department_to_user_in_DB "$username" "$department_name"
+                add_department_to_user_in_DB "$username_to_assign" "$department_name"
                 # Logging: User successfully assigned to the department
-                write_log "assign_user_to_department:UserSuccessfullyAssigned '$username' to '$department_name'"
+                write_log "assign_user_to_department:UserSuccessfullyAssigned '$username_to_assign' to '$department_name'"
                 echo "The user was successfully assigned to the department"
             fi
         else
@@ -594,15 +640,16 @@ assign_user_to_department() {
         fi
     else
         # Logging: User not found
-        write_log "assign_user_to_department:UserNotFound '$username'"
-        echo "User $username does not exists. Choose a different username."
+        write_log "assign_user_to_department:UserNotFound '$username_to_assign'"
+        echo "User $username_to_assign does not exists. Choose a different username."
     fi
 }
 
 add_user_to_department_in_DB() {
-    username=$1
-    department_name=$2
-
+    local username=$1
+    local department_name=$2
+    local old_users_in_department
+    local new_users_in_department
     old_users_in_department=$(grep -E ";$department_name;" $departments_file | cut -d ";" -f4)
     if [[ "$old_users_in_department" == "None" ]]; then
         new_users_in_department="$username"
@@ -613,9 +660,10 @@ add_user_to_department_in_DB() {
 }
 
 add_department_to_user_in_DB() {
-    username=$1
-    department_name=$2
-
+    local username=$1
+    local department_name=$2
+    local old_departments_of_user
+    local new_departments_of_user
     old_departments_of_user=$(grep -E ";$username;" $users_file | cut -d ";" -f5)
     if [[ "$old_departments_of_user" == "None" ]]; then
         new_departments_of_user="$department_name"
@@ -669,7 +717,7 @@ manage_logs() {
 
 # Function to write logs to $logs_file table
 write_log() {
-    username=$(whoami)
+    author=$(whoami)
     date=$(date +"%Y-%m-%d %H:%M:%S")
     action=$1
 
