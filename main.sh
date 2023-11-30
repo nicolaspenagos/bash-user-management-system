@@ -743,7 +743,7 @@ manage_logs() {
 
 # Function to write logs to $logs_file table
 write_log() {
-    author=$(who am i)
+    author=$(who am i | cut -d' ' -f1)
     date=$(date +"%Y-%m-%d %H:%M:%S")
     action=$1
 
