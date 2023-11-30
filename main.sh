@@ -942,13 +942,6 @@ monitor_system() {
     write_log "monitor_system:FileActivitiesTracked"
 }
 
-# Main loop to execute the system monitoring
-while true; do
-    monitor_system
-
-    # Pause to allow the user to view the results before monitoring again
-    read -p "Presione Enter para continuar el monitoreo..."
-done
 
 
 create_tables() {
