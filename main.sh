@@ -139,7 +139,7 @@ disable_user() {
         sudo userdel -r "$disable_user"
         # Logic to disable a user
         sed -i "/;$disable_user;/s/Yes/No/" $users_file
-        
+
   	# Logging: User successfully disabled
         write_log "disable_user:UserDisabled '$disable_user'"
 
@@ -164,7 +164,7 @@ modify_user() {
             read -rp "Enter the old username: " username
             # Logging: Attempt to update username
             write_log "update_username:AttemptToUpdateUsername '$username'"
-             
+
             # Verify if the user exists
             if id "$username" > "/dev/null" 2>&1; then
                 read -rp "Enter the new username: " new_username
@@ -278,10 +278,10 @@ update_password_in_DB() {
 
 create_department() {
     read -rp "Enter the department name: " new_department
-    
+
     # Logging: Attempt to create a department
     write_log "create_department:AttemptToCreateDepartment '$new_department'"
-    
+
     # Check if the department already exists in the operating system
     if department_exists "$new_department"; then
         # The department already exists in the system
@@ -339,10 +339,10 @@ disable_department() {
   if department_exists "$department_name"; then
     # Get the list of users in the department
     users=$(getent group "$department_name" | cut -d: -f4)
-    
+
     # Logging: Users in the department
     write_log "disable_department:UsersInDepartment '$department_name': '$users'"
-    
+
     # Show users in department
     echo "Users in the department $department_name: $users"
 
@@ -357,7 +357,7 @@ disable_department() {
       for user in $(echo "$users" | tr "," "\n"); do
         sudo deluser "$user" "$department_name"
       done
-      
+
       # Logging: Attempt to delete the department
       write_log "disable_department:AttemptToDeleteDepartment '$department_name'"
 
@@ -365,7 +365,7 @@ disable_department() {
       sudo delgroup "$department_name"
       sed -i "/$department_name/s/Yes/No/" "$departments_file"
       remove_department_from_users_in_db "$department_name"
-      
+
       # Logging: Department successfully disabled
       write_log "disable_department:DepartmentSuccessfullyDisabled '$department_name'"
       echo "Department $department_name disabled."
@@ -373,7 +373,7 @@ disable_department() {
       echo "Operation cancelled."
       # Logging: Operation cancelled
       write_log "disable_department:OperationCancelled"
-            
+
     fi
   else
     # Logging: Department not found
@@ -386,7 +386,7 @@ modify_department() {
     read -rp "Enter the department name to modify: " department_name
     # Logging: Attempt to modify a department
     write_log "modify_department:AttemptToModifyDepartment '$department_name'"
-    
+
     # Check if the department exists in the operating system
     if department_exists_in_OS "$department_name"; then
         # Logging: Department found, attempt to modify
@@ -394,17 +394,17 @@ modify_department() {
 
         # Request new name for the department
         read -rp "Ingrese el nuevo nombre para el departamento $department_name: " new_department_name
-        
+
         # Logging: Attempt to change department name
         write_log "modify_department:AttemptToChangeDepartmentName '$department_name' to '$new_department_name'"
-        
+
         # Modify the department name
         sudo groupmod -n "$new_department_name" "$department_name"
         sed -i "s/$department_name/$new_department_name/" "$departments_file"
-        
+
         # Logging: Department successfully modified
         write_log "modify_department:DepartmentSuccessfullyModified '$department_name' to '$new_department_name'"
-        
+
         echo "Department $department_name modified to $new_department_name."
     else
         # Logging: Department not found
@@ -454,10 +454,10 @@ manage_departments() {
 unassign_user_from_department() {
     read -rp "Enter the username to unassign: " unassign_user
     read -rp "Enter the department name: " unassign_department
-    
+
     # Logging: Attempt to unassign user from department
     write_log "unassign_user_from_department:AttemptToUnassignUser '$unassign_user' from Department '$unassign_department'"
-    
+
     # Verify that the user and department exist
     if user_exists "$unassign_user" && department_exists "$unassign_department"; then
         # Logging: User and department exist, attempt to unassign
@@ -465,7 +465,7 @@ unassign_user_from_department() {
 
         # Check if the user is assigned to the department
         if user_assigned_to_department "$unassign_user" "$unassign_department" && department_has_user "$unassign_department" "$unassign_user"; then
-        
+
             # Logging: User assigned to department, attempt to remove
             write_log "unassign_user_from_department:UserAssignedToDepartment, AttemptToRemove"
             # Remove the user from the department in the file
@@ -479,8 +479,8 @@ unassign_user_from_department() {
         else
            # Logging: User not assigned to department
            write_log "unassign_user_from_department:UserNotAssignedToDepartment '$unassign_user' to Department '$unassign_department'"
-            
-            echo "El usuario $unassign_user no está asignado al departamento $unassign_department."
+
+           echo "El usuario $unassign_user no está asignado al departamento $unassign_department."
         fi
     else
         # Logging: User or department not found
@@ -564,7 +564,7 @@ assign_user_to_department() {
     read -rp "Enter the username: " username
     # Logging: Attempt to assign user to department
     write_log "assign_user_to_department:AttemptToAssignUser '$username' to Department"
-    
+
     # Verify if the user exists
     if id "$username" > "/dev/null" 2>&1; then
         read -rp "Enter the department name to assign to $username: " department_name
@@ -576,11 +576,11 @@ assign_user_to_department() {
                 write_log "assign_user_to_department:UserAlreadyMemberOfDepartment '$username' in '$department_name'"
                 echo "User $username is already a member of the department $department_name."
             else
-      
+
                 #Assign the user to the department in the system
                 usermod -aG "$department_name" "$username"
                 # Logging: Attempt to assign user to the department in the DB
-           
+
                 #Assign the user to the department in the DB
                 add_user_to_department_in_DB "$username" "$department_name"
                 # Logging: Attempt to assign department to the user in the DB
@@ -648,13 +648,13 @@ manage_logs() {
         1)
             filter_logs_by_date
             ;;
-        2)  
+        2)
             filter_logs_by_username
-            ;;   
+            ;;
         3)
             search_logs_by_action
             ;;
-        4) 
+        4)
             find_day_with_most_logs
             ;;
         5)
@@ -663,9 +663,7 @@ manage_logs() {
         6)
             find_most_repeated_action
             ;;
-        
         0)
-        	
             ;;
         *)
             echo "Invalid option"
@@ -673,23 +671,17 @@ manage_logs() {
     esac
 }
 
-# Function to write logs to logs.txt table
+# Function to write logs to $logs_file table
 write_log() {
     username=$(whoami)
     date=$(date +"%Y-%m-%d %H:%M:%S")
     action=$1
 
-    # Check if the log file exists, if not, create it with the header
-    if [ ! -e "logs.txt" ]; then
-        echo -e "#;Username;Date;Action" > "logs.txt"
-        chmod 777 "logs.txt"
-    fi
-
     # Count the number of lines in the log file to determine the index
-    index=$(wc -l < "logs.txt")
+    index=$(wc -l < "$logs_file")
 
-    # Append the log entry to the logs.txt table with the index
-    echo -e "${index};${username};${date};${action}" >> "logs.txt"
+    # Append the log entry to the $logs_file table with the index
+    echo -e "${index};${username};${date};${action}" >> "$logs_file"
 }
 
 # Function to load and filter logs by date without hours
@@ -702,10 +694,10 @@ filter_logs_by_date() {
         return
     fi
 
-    # Load logs from logs.txt
-    if [ -e "logs.txt" ]; then
+    # Load logs from $logs_file
+    if [ -e "$logs_file" ]; then
         # Filter logs by date without hours
-        filtered_logs=$(awk -v date="$filter_date" -F ";" '$3 ~ date { print }' "logs.txt")
+        filtered_logs=$(awk -v date="$filter_date" -F ";" '$3 ~ date { print }' "$logs_file")
 
         # Display filtered logs
         if [ -n "$filtered_logs" ]; then
@@ -722,10 +714,10 @@ filter_logs_by_date() {
 filter_logs_by_username() {
     read -rp "Enter the username to filter: " filter_username
 
-    # Load logs from logs.txt
-    if [ -e "logs.txt" ]; then
+    # Load logs from $logs_file
+    if [ -e "$logs_file" ]; then
         # Filter logs by username
-        filtered_logs=$(awk -v username="$filter_username" -F ";" '$2 ~ username { print }' "logs.txt")
+        filtered_logs=$(awk -v username="$filter_username" -F ";" '$2 ~ username { print }' "$logs_file")
 
         # Display filtered logs
         if [ -n "$filtered_logs" ]; then
@@ -742,10 +734,10 @@ filter_logs_by_username() {
 search_logs_by_action() {
     read -rp "Enter the action or partial action to search: " search_action
 
-    # Load logs from logs.txt
-    if [ -e "logs.txt" ]; then
+    # Load logs from $logs_file
+    if [ -e "$logs_file" ]; then
         # Search logs by action or partial action
-        matched_logs=$(grep -i "$search_action" "logs.txt")
+        matched_logs=$(grep -i "$search_action" "$logs_file")
 
         # Display matched logs
         if [ -n "$matched_logs" ]; then
@@ -760,10 +752,10 @@ search_logs_by_action() {
 
 # Function to find the day with the most logs
 find_day_with_most_logs() {
-    # Load logs from logs.txt
-    if [ -e "logs.txt" ]; then
+    # Load logs from $logs_file
+    if [ -e "$logs_file" ]; then
         # Extract the day from each log entry using awk
-        days=$(awk -F ';' '{split($3, date, " "); print date[1]}' "logs.txt")
+        days=$(awk -F ';' '{split($3, date, " "); print date[1]}' "$logs_file")
 
         # Count occurrences of each day and find the day with the most logs
         most_logs_day=$(echo "$days" | sort | uniq -c | sort -nr | head -n 1)
@@ -781,10 +773,10 @@ find_day_with_most_logs() {
 
 # Function to find the most repeated action
 find_most_repeated_action() {
-    # Load logs from logs.txt
-    if [ -e "logs.txt" ]; then
+    # Load logs from $logs_file
+    if [ -e "$logs_file" ]; then
         # Extract the action from each log entry using awk
-        actions=$(awk -F ':' '{print $NF}' "logs.txt")
+        actions=$(awk -F ':' '{print $NF}' "$logs_file")
 
         # Count occurrences of each action and find the most repeated action
         most_repeated_action=$(echo "$actions" | sort | uniq -c | sort -nr | head -n 1)
@@ -802,10 +794,10 @@ find_most_repeated_action() {
 
 # Function to find the most active user
 find_most_active_user() {
-    # Load logs from logs.txt
-    if [ -e "logs.txt" ]; then
+    # Load logs from $logs_file
+    if [ -e "$logs_file" ]; then
         # Extract the username from each log entry using awk
-        usernames=$(awk -F ';' '{print $2}' "logs.txt")
+        usernames=$(awk -F ';' '{print $2}' "$logs_file")
 
         # Count occurrences of each username and find the most active user
         most_active_user=$(echo "$usernames" | sort | uniq -c | sort -nr | head -n 1)
@@ -821,10 +813,7 @@ find_most_active_user() {
     fi
 }
 
-
 #LOGS_END
-
-
 
 # Function to manage system activities
 manage_activities() {
@@ -882,26 +871,41 @@ track_file_activities() {
     write_log "track_file_activities:FileActivitiesTracked"
 }
 
-
-
-
 # Function to manage the system
 manage_system() {
     clear
-    echo "1. Monitor system status"
-    echo "2. Create alert report"
+    echo "1. Show running processes and their resource usage"
+    echo "2. Check CPU threshold"
+    echo "3. Show file system statistics"
+    echo "4. Show I/O statistics"
+    echo "5. Show virtual memory statistics"
+    echo "6. Show the running time and the average load"
+    echo "7. Show the free and used ram memory"
     echo "0. Back to main menu"
 
     read -rp "Select an option: " system_option
 
     case $system_option in
         1)
-            # Logic to monitor system status
-            monitor_system
+            top
             ;;
         2)
-            # Logic to create alert report
-            echo "Function not implemented"
+            check_cpu_threshold
+            ;;
+        3)
+            show_file_system_stats
+            ;;
+        4)
+            show_iostat_stats
+            ;;
+        5)
+            show_vmstat_stats
+            ;;
+        6)
+            show_uptime
+            ;;
+        7)
+            show_memory_usage
             ;;
         0)
             ;;
@@ -911,23 +915,77 @@ manage_system() {
     esac
 }
 
-
-# Function to monitor the overall system state
-monitor_system() {
-    # Monitor memory activity
-    ps aux > memory_activities.log
-    echo "Memory activities tracked and saved to memory_activities.log"
-    write_log "monitor_system:MemoryActivitiesTracked"
-
-    # Monitor process activity
-    track_process_activities
-
-    # Monitor file activity in the specified directory
-    ls -l "$directory" > file_activities.log
-    echo "File activities in $directory tracked and saved to file_activities.log"
-    write_log "monitor_system:FileActivitiesTracked"
+check_cpu_threshold() {
+    THRESHOLD=90
+    CPU_USAGE=$(top -bn1 | grep "Cpu(s)" | awk '{print $2}' | cut -d. -f1)
+    if [ "$CPU_USAGE" -gt $THRESHOLD ]; then
+        echo "Alert: CPU usage higher than $THRESHOLD%!"
+    fi
 }
 
+show_uptime() {
+    # Get the 1-minute load average
+    saved_uptime=$(uptime)
+    load_average=$(echo "$saved_uptime" | awk -F'[a-z]:' '{print $2}')
+
+    # Set the threshold for a high load average
+    threshold=1.0
+
+    echo "Current uptime and load average:"
+    echo "$saved_uptime"
+
+    # Compare load average with the threshold
+    if [ "$(echo "$load_average" -gt $threshold | bc -l)" -eq 1 ]; then
+        echo "Load average is high! Alert!"
+    fi
+}
+
+show_memory_usage() {
+    # Get the free memory information
+    free_memory=$(free -h | grep Mem)
+
+    # Extract the percentage of used memory
+    used_percent=$(echo "$free_memory" | awk '{print $3}' | tr -d '%')
+
+    # Set the threshold for high memory usage
+    memory_threshold=70
+
+    echo "Current memory usage:"
+    echo "$free_memory"
+
+    # Compare memory usage with the threshold
+    if [ "$used_percent" -gt "$memory_threshold" ]; then
+        echo "Memory usage is high! Alert!"
+        # You can add additional actions here, such as sending an email or a system notification.
+    fi
+}
+
+show_file_system_stats() {
+    clear
+    df_output=$(df -h | awk 'NR==1 || $5 > 80')
+    echo "$df_output"
+    if [ "$(echo "$df_output" | awk 'NR>1' | wc -l)" -gt 0 ]; then
+        echo "File system usage is high!"
+    fi
+}
+
+show_iostat_stats() {
+    clear
+    iostat_output=$(iostat 1 2 | awk 'NR==7 && $1 > 80')
+    echo "$iostat_output"
+    if [ "$(echo "$iostat_output" | wc -l)" -gt 0 ]; then
+        echo "High CPU usage detected!"
+    fi
+}
+
+show_vmstat_stats() {
+    clear
+    vmstat_output=$(vmstat 1 | awk 'NR==3 && $15 > 100')
+    echo "$vmstat_output"
+    if [ "$(echo "$vmstat_output" | wc -l)" -gt 0 ]; then
+        echo "High swap activity detected!"
+    fi
+}
 
 
 create_tables() {
@@ -940,6 +998,12 @@ create_tables() {
     echo -e "#;Department_name;Enabled;Users" > "$departments_file"
     chmod 777 "$departments_file"
   fi
+
+  # Check if the log file exists, if not, create it with the header
+    if [ ! -e "$logs_file" ]; then
+        echo -e "#;Username;Date;Action" > "$logs_file"
+        chmod 777 "$logs_file"
+    fi
 }
 
 # Check if the user is root
@@ -986,5 +1050,3 @@ while true; do
             ;;
     esac
 done
-
-
