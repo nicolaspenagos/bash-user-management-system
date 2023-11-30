@@ -139,8 +139,9 @@ disable_user() {
         sudo userdel -r "$disable_user"
         # Logic to disable a user
         sed -i "/;$disable_user;/s/Yes/No/" $users_file
+        remove_user_from_departments "$disable_user"
         
-  	# Logging: User successfully disabled
+  	    # Logging: User successfully disabled
         write_log "disable_user:UserDisabled '$disable_user'"
 
         echo "User $disable_user was removed from the system and disabled in the DB"
@@ -148,6 +149,19 @@ disable_user() {
     	# Logging: User does not exist
         write_log "disable_user:UserNotFound '$disable_user'"
         echo "User $disable_user does not exists. Choose a different username."
+    fi
+}
+
+remove_user_from_departments() {
+    username=$1
+    departments=$(grep -E ";$username;" $users_file | cut -d ";" -f5)
+    if [[ "$departments" != "None" ]]; then
+        for department in $(echo "$departments" | tr ":" "\n"); do
+            remove_user_from_department_in_DB "$username" "$department"
+            
+            # Logging: User successfully removed from department
+            write_log "remove_user_from_departments:UserSuccessfullyRemovedFromDepartment '$username' from '$department'"
+        done
     fi
 }
 
