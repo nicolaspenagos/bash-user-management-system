@@ -932,15 +932,91 @@ track_process_activities() {
 }
 
 track_file_activities() {
-    files_to_track=("users.txt" "departments.txt") # List of files to track
+    clear
+    echo "Select a file to check activity:"
+    echo "1. GROUP"
+    echo "2. PASSWD"
+    echo "3. SHADOW"
+    echo "4. USERS.TXT"
+    echo "5. DEPARTMENTS.TXT"
+    echo "0. Back to main menu"
 
-    for file in "${files_to_track[@]}"; do
-        cat "$directory$file" >>file_activities.log
-    done
+    read -rp "Select an option: " file_option
 
-    echo "File activities in $directory tracked and saved to file_activities.log"
-    write_log "track_file_activities:FileActivitiesTracked"
+    case $file_option in
+    1)
+        get_group_directory_details
+        ;;
+    2)
+        get_passwd_directory_details
+        ;;
+    3)
+        get_shadow_directory_details
+        ;;
+    4)
+        get_users_directory_details
+        ;;
+    5)
+        get_departments_directory_details
+
+        ;;
+    0)
+      show_main_menu
+      ;;
+    *)
+        echo "Invalid option"
+        ;;
+    esac
 }
+
+get_group_directory_details() {
+    file_path="/etc/group"
+
+        if [ -e "$file_path" ]; then
+            stat "$file_path"
+        else
+            echo "File not found: $file_path"
+        fi
+}
+
+get_passwd_directory_details() {
+    file_path="/etc/passwd"
+
+            if [ -e "$file_path" ]; then
+                stat "$file_path"
+            else
+                echo "File not found: $file_path"
+            fi
+}
+
+get_shadow_directory_details() {
+    file_path="/etc/shadow"
+
+            if [ -e "$file_path" ]; then
+                stat "$file_path"
+            else
+                echo "File not found: $file_path"
+            fi
+}
+
+get_users_directory_details() {
+
+            if [ -e "$users_file" ]; then
+                stat "$users_file"
+            else
+                echo "File not found: $users_file"
+            fi
+}
+
+get_departments_directory_details() {
+
+        if [ -e "$departments_file" ]; then
+            stat "$departments_file"
+        else
+            echo "File not found: $departments_file"
+        fi
+}
+
 
 # Function to manage the system
 manage_system() {
