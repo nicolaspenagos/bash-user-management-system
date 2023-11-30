@@ -74,12 +74,12 @@ create_user() {
                 sed -i "/;$new_username;/s/No/Yes/" "$users_file"
                 update_password_in_DB "$new_username"
                 #Update departments of the user
-                update_deparments_of_disabled_user "$new_username"
+                # update_deparments_of_disabled_user "$new_username" TODO quitar comentario
                 write_log "create_user:UserCreatedAndEnabled"
             else
                 # Save user information to users.txt
                 echo "$(wc -l < $users_file);$new_username;$(grep -E "$new_username:" /etc/shadow | cut -d: -f2);Yes;None" >> $users_file
-		write_log "create_user:UserCreated"
+		        write_log "create_user:UserCreated"
             fi
             echo "User $new_username created"
         fi
@@ -156,6 +156,7 @@ remove_user_from_departments() {
     username=$1
     departments=$(grep -E ";$username;" $users_file | cut -d ";" -f5)
     if [[ "$departments" != "None" ]]; then
+        echo "$departments" | tr ":" "\n"
         for department in $(echo "$departments" | tr ":" "\n"); do
             remove_user_from_department_in_DB "$username" "$department"
             
@@ -337,7 +338,7 @@ create_department() {
             sudo addgroup "$new_department"
             # Logging: Attempt to create a new department
             write_log "create_department:AttemptToCreateNewDepartment '$new_department'"
-            echo -e "$(wc -l < $users_file);$new_department;Yes;None" >> "$departments_file"
+            echo "$(wc -l < $departments_file);$new_department;Yes;None" >> "$departments_file"
             # Logging: Department created successfully
             write_log "create_department:DepartmentCreatedSuccessfully '$new_department'"
             echo "Department $new_department created."
@@ -522,12 +523,12 @@ remove_department_from_user_in_db() {
 
 # Function to remove a user from a department
 remove_user_from_department_in_db() {
-  user=$1
-  department=$2
+  user_to_remove_from_department=$1
+  department_to_modify=$2
   # Modificar departments.txt
-  sed -i "/;$department;/s/;$user:/;/" "$departments_file"
-  sed -i "/;$department;/s/:$user//" "$departments_file"
-  sed -i "/;$department;/s/;$user/;None/" "$departments_file"
+  sed -i "/;$department_to_modify;/s/;$user_to_remove_from_department:/;/" "$departments_file"
+  sed -i "/;$department_to_modify;/s/:$user_to_remove_from_department//" "$departments_file"
+  sed -i "/;$department_to_modify;/s/;$user_to_remove_from_department/;None/" "$departments_file"
 }
 
 # Function to check if a user exists
@@ -575,34 +576,34 @@ manage_assignments() {
 }
 
 assign_user_to_department() {
-    read -rp "Enter the username: " username
+    read -rp "Enter the username: " username_to_assign
     # Logging: Attempt to assign user to department
-    write_log "assign_user_to_department:AttemptToAssignUser '$username' to Department"
+    write_log "assign_user_to_department:AttemptToAssignUser '$username_to_assign' to Department"
     
     # Verify if the user exists
-    if id "$username" > "/dev/null" 2>&1; then
-        read -rp "Enter the department name to assign to $username: " department_name
+    if id "$username_to_assign" > "/dev/null" 2>&1; then
+        read -rp "Enter the department name to assign to $username_to_assign: " department_name
         # Check if the department exists in the operating system
         if department_exists_in_OS "$department_name"; then
             # Check if the user is already a member of the department
-            if id -nG "$username" | grep -qw "$department_name"; then
+            if id -nG "$username_to_assign" | grep -qw "$department_name"; then
                 # Logging: User is already a member
-                write_log "assign_user_to_department:UserAlreadyMemberOfDepartment '$username' in '$department_name'"
-                echo "User $username is already a member of the department $department_name."
+                write_log "assign_user_to_department:UserAlreadyMemberOfDepartment '$username_to_assign' in '$department_name'"
+                echo "User $username_to_assign is already a member of the department $department_name."
             else
       
                 #Assign the user to the department in the system
-                usermod -aG "$department_name" "$username"
+                usermod -aG "$department_name" "$username_to_assign"
                 # Logging: Attempt to assign user to the department in the DB
            
                 #Assign the user to the department in the DB
-                add_user_to_department_in_DB "$username" "$department_name"
+                add_user_to_department_in_DB "$username_to_assign" "$department_name"
                 # Logging: Attempt to assign department to the user in the DB
-                write_log "assign_user_to_department:AttemptToAssignDepartmentToUserInDB '$username' to '$department_name'"
+                write_log "assign_user_to_department:AttemptToAssignDepartmentToUserInDB '$username_to_assign' to '$department_name'"
                 #Assign the department to the user in the DB
-                add_department_to_user_in_DB "$username" "$department_name"
+                add_department_to_user_in_DB "$username_to_assign" "$department_name"
                 # Logging: User successfully assigned to the department
-                write_log "assign_user_to_department:UserSuccessfullyAssigned '$username' to '$department_name'"
+                write_log "assign_user_to_department:UserSuccessfullyAssigned '$username_to_assign' to '$department_name'"
                 echo "The user was successfully assigned to the department"
             fi
         else
@@ -612,8 +613,8 @@ assign_user_to_department() {
         fi
     else
         # Logging: User not found
-        write_log "assign_user_to_department:UserNotFound '$username'"
-        echo "User $username does not exists. Choose a different username."
+        write_log "assign_user_to_department:UserNotFound '$username_to_assign'"
+        echo "User $username_to_assign does not exists. Choose a different username."
     fi
 }
 
@@ -689,7 +690,7 @@ manage_logs() {
 
 # Function to write logs to logs.txt table
 write_log() {
-    username=$(whoami)
+    author=$(whoami)
     date=$(date +"%Y-%m-%d %H:%M:%S")
     action=$1
 
@@ -703,7 +704,7 @@ write_log() {
     index=$(wc -l < "logs.txt")
 
     # Append the log entry to the logs.txt table with the index
-    echo -e "${index};${username};${date};${action}" >> "logs.txt"
+    echo -e "${index};${author};${date};${action}" >> "logs.txt"
 }
 
 # Function to load and filter logs by date without hours
