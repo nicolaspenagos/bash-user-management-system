@@ -207,7 +207,7 @@ modify_user() {
                         #Update user in the system
                         usermod -l "$new_username" -m -d "/home/$new_username" "$username"
                         #Update user in the DB
-                        change_username_in_DB "$username" "$new_username"
+                        change_username_in_dbs "$username" "$new_username"
                         # Logging: New username already exists
                         write_log "update_username:NewUsernameAlreadyExists '$new_username'"
                         echo "The user was successfully updated"
@@ -263,7 +263,7 @@ modify_user() {
                         usermod -l "$new_username" -m -d "/home/$new_username" "$username"
                         passwd "$new_username"
                         #Update system in the DB
-                        change_username_in_DB "$username" "$new_username"
+                        change_username_in_dbs "$username" "$new_username"
                         update_password_in_DB "$new_username"
                         # Logging: User successfully updated
                         write_log "update_username_and_password:UserSuccessfullyUpdated '$username' to '$new_username'"
@@ -284,10 +284,30 @@ modify_user() {
     esac
 }
 
-change_username_in_DB() {
-    old_username=$1
-    new_username=$2
+change_username_in_dbs() {
+    local old_username=$1
+    local new_username=$2
+    local departments
+    departments=$(grep -E ";$old_username;" $users_file | cut -d ";" -f5)
+    change_username_in_users_DB "$old_username" "$new_username"
+    for department in $(echo "$departments" | tr ":" "\n"); do
+        change_username_in_departments_DB "$old_username" "$new_username" "$department"
+    done
+}
+
+change_username_in_users_DB() {
+    local old_username=$1
+    local new_username=$2
     sed -i "/;$old_username;/s/$old_username/$new_username/" $users_file
+}
+
+change_username_in_departments_DB() {
+    local old_username=$1
+    local new_username=$2
+    local department=$3
+    sed -i "/;$department;/s/;$old_username:/;$new_username:/" "$departments_file"
+    sed -i "/;$department;/s/:$old_username/:$new_username/" "$departments_file"
+    sed -i "/;$department;/s/;$old_username/;$new_username/" "$departments_file"
 }
 
 update_password_in_DB() {
