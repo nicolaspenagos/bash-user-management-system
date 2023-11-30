@@ -158,7 +158,7 @@ remove_user_from_departments() {
     if [[ "$departments" != "None" ]]; then
         echo "$departments" | tr ":" "\n"
         for department in $(echo "$departments" | tr ":" "\n"); do
-            remove_user_from_department_in_DB "$username" "$department"
+            remove_user_from_department_in_db "$username" "$department"
             
             # Logging: User successfully removed from department
             write_log "remove_user_from_departments:UserSuccessfullyRemovedFromDepartment '$username' from '$department'"

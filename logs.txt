@@ -40,3 +40,23 @@
 39;root;2023-11-29 22:40:40;create_department:AttemptToCreateDepartment 'dep4'
 40;root;2023-11-29 22:40:40;create_department:AttemptToCreateNewDepartment 'dep4'
 41;root;2023-11-29 22:40:40;create_department:DepartmentCreatedSuccessfully 'dep4'
+42;root;2023-11-29 22:42:28;assign_user_to_department:AttemptToAssignUser 'pru4' to Department
+43;root;2023-11-29 22:42:30;assign_user_to_department:AttemptToAssignDepartmentToUserInDB 'pru4' to 'dep4'
+44;root;2023-11-29 22:42:30;assign_user_to_department:UserSuccessfullyAssigned 'pru4' to 'dep4'
+45;root;2023-11-29 22:42:42;remove_user_from_departments:UserSuccessfullyRemovedFromDepartment 'pru4' from 'dep4'
+46;root;2023-11-29 22:42:42;disable_user:UserDisabled 'pru4'
+47;root;2023-11-29 22:43:44;disable_department:AttemptToDisableDepartment 'dep4'
+48;root;2023-11-29 22:43:44;disable_department:UsersInDepartment 'dep4': ''
+49;root;2023-11-29 22:43:48;disable_department:AttemptToAdjustUserMembershipInDepartment 'dep4'
+50;root;2023-11-29 22:43:48;disable_department:AttemptToDeleteDepartment 'dep4'
+51;root;2023-11-29 22:43:48;disable_department:DepartmentSuccessfullyDisabled 'dep4'
+52;root;2023-11-29 22:44:19;create_user:UserCreatedInOS
+53;root;2023-11-29 22:44:23;create_user:UserCreated
+54;root;2023-11-29 22:44:33;create_department:AttemptToCreateDepartment 'dep4'
+55;root;2023-11-29 22:44:33;create_department:AttemptToCreateNewDepartment 'dep4'
+56;root;2023-11-29 22:44:33;create_department:DepartmentCreatedSuccessfully 'dep4'
+57;root;2023-11-29 22:44:53;assign_user_to_department:AttemptToAssignUser 'pru4' to Department
+58;root;2023-11-29 22:44:55;assign_user_to_department:AttemptToAssignDepartmentToUserInDB 'pru4' to 'dep4'
+59;root;2023-11-29 22:44:55;assign_user_to_department:UserSuccessfullyAssigned 'pru4' to 'dep4'
+60;root;2023-11-29 22:45:05;remove_user_from_departments:UserSuccessfullyRemovedFromDepartment 'pru4' from 'dep4'
+61;root;2023-11-29 22:45:05;disable_user:UserDisabled 'pru4'
