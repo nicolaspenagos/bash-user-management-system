@@ -380,13 +380,13 @@ disable_department() {
     write_log "disable_department:AttemptToDisableDepartment '$department_name'"
     if department_exists "$department_name"; then
         # Get the list of users in the department
-        users=$(getent group "$department_name" | cut -d: -f4)
+        users_in_department=$(getent group "$department_name" | cut -d: -f4)
 
         # Logging: Users in the department
-        write_log "disable_department:UsersInDepartment '$department_name': '$users'"
+        write_log "disable_department:UsersInDepartment '$department_name': '$users_in_department'"
 
         # Show users in department
-        echo "Users in the department $department_name: $users"
+        echo "Users in the department $department_name: $users_in_department"
 
         # Ask if the user wants to continue
         read -rp "Do you want to delete the group $department_name and adjust the users' membership? (s/n): " response
@@ -396,7 +396,7 @@ disable_department() {
             write_log "disable_department:AttemptToAdjustUserMembershipInDepartment '$department_name'"
 
             # Adjust user membership
-            for user in $(echo "$users" | tr "," "\n"); do
+            for user in $(echo "$users_in_department" | tr "," "\n"); do
                 sudo deluser "$user" "$department_name"
             done
 
@@ -549,12 +549,12 @@ remove_department_from_user_in_db() {
 
 # Function to remove a user from a department
 remove_user_from_department_in_db() {
-    user_to_remove_from_department=$1
-    department_to_modify=$2
+    local user=$1
+    local department=$2
     # Modificar departments.txt
-    sed -i "/;$department_to_modify;/s/;$user_to_remove_from_department:/;/" "$departments_file"
-    sed -i "/;$department_to_modify;/s/:$user_to_remove_from_department//" "$departments_file"
-    sed -i "/;$department_to_modify;/s/;$user_to_remove_from_department/;None/" "$departments_file"
+    sed -i "/;$department;/s/;$user:/;/" "$departments_file"
+    sed -i "/;$department;/s/:$user//" "$departments_file"
+    sed -i "/;$department;/s/;$user/;None/" "$departments_file"
 }
 
 # Function to check if a user exists
@@ -715,23 +715,17 @@ manage_logs() {
     esac
 }
 
-# Function to write logs to logs.txt table
+# Function to write logs to $logs_file table
 write_log() {
     author=$(whoami)
     date=$(date +"%Y-%m-%d %H:%M:%S")
     action=$1
 
-    # Check if the log file exists, if not, create it with the header
-    if [ ! -e "logs.txt" ]; then
-        echo -e "#;Username;Date;Action" >"logs.txt"
-        chmod 777 "logs.txt"
-    fi
-
     # Count the number of lines in the log file to determine the index
-    index=$(wc -l <"logs.txt")
+    index=$(wc -l <"$logs_file")
 
-    # Append the log entry to the logs.txt table with the index
-    echo -e "${index};${author};${date};${action}" >>"logs.txt"
+    # Append the log entry to the $logs_file table with the index
+    echo -e "${index};${username};${date};${action}" >>"$logs_file"
 }
 
 # Function to load and filter logs by date without hours
@@ -744,10 +738,10 @@ filter_logs_by_date() {
         return
     fi
 
-    # Load logs from logs.txt
-    if [ -e "logs.txt" ]; then
+    # Load logs from $logs_file
+    if [ -e "$logs_file" ]; then
         # Filter logs by date without hours
-        filtered_logs=$(awk -v date="$filter_date" -F ";" '$3 ~ date { print }' "logs.txt")
+        filtered_logs=$(awk -v date="$filter_date" -F ";" '$3 ~ date { print }' "$logs_file")
 
         # Display filtered logs
         if [ -n "$filtered_logs" ]; then
@@ -764,10 +758,10 @@ filter_logs_by_date() {
 filter_logs_by_username() {
     read -rp "Enter the username to filter: " filter_username
 
-    # Load logs from logs.txt
-    if [ -e "logs.txt" ]; then
+    # Load logs from $logs_file
+    if [ -e "$logs_file" ]; then
         # Filter logs by username
-        filtered_logs=$(awk -v username="$filter_username" -F ";" '$2 ~ username { print }' "logs.txt")
+        filtered_logs=$(awk -v username="$filter_username" -F ";" '$2 ~ username { print }' "$logs_file")
 
         # Display filtered logs
         if [ -n "$filtered_logs" ]; then
@@ -784,10 +778,10 @@ filter_logs_by_username() {
 search_logs_by_action() {
     read -rp "Enter the action or partial action to search: " search_action
 
-    # Load logs from logs.txt
-    if [ -e "logs.txt" ]; then
+    # Load logs from $logs_file
+    if [ -e "$logs_file" ]; then
         # Search logs by action or partial action
-        matched_logs=$(grep -i "$search_action" "logs.txt")
+        matched_logs=$(grep -i "$search_action" "$logs_file")
 
         # Display matched logs
         if [ -n "$matched_logs" ]; then
@@ -802,10 +796,10 @@ search_logs_by_action() {
 
 # Function to find the day with the most logs
 find_day_with_most_logs() {
-    # Load logs from logs.txt
-    if [ -e "logs.txt" ]; then
+    # Load logs from $logs_file
+    if [ -e "$logs_file" ]; then
         # Extract the day from each log entry using awk
-        days=$(awk -F ';' '{split($3, date, " "); print date[1]}' "logs.txt")
+        days=$(awk -F ';' '{split($3, date, " "); print date[1]}' "$logs_file")
 
         # Count occurrences of each day and find the day with the most logs
         most_logs_day=$(echo "$days" | sort | uniq -c | sort -nr | head -n 1)
@@ -823,10 +817,10 @@ find_day_with_most_logs() {
 
 # Function to find the most repeated action
 find_most_repeated_action() {
-    # Load logs from logs.txt
-    if [ -e "logs.txt" ]; then
+    # Load logs from $logs_file
+    if [ -e "$logs_file" ]; then
         # Extract the action from each log entry using awk
-        actions=$(awk -F ':' '{print $NF}' "logs.txt")
+        actions=$(awk -F ':' '{print $NF}' "$logs_file")
 
         # Count occurrences of each action and find the most repeated action
         most_repeated_action=$(echo "$actions" | sort | uniq -c | sort -nr | head -n 1)
@@ -844,10 +838,10 @@ find_most_repeated_action() {
 
 # Function to find the most active user
 find_most_active_user() {
-    # Load logs from logs.txt
-    if [ -e "logs.txt" ]; then
+    # Load logs from $logs_file
+    if [ -e "$logs_file" ]; then
         # Extract the username from each log entry using awk
-        usernames=$(awk -F ';' '{print $2}' "logs.txt")
+        usernames=$(awk -F ';' '{print $2}' "$logs_file")
 
         # Count occurrences of each username and find the most active user
         most_active_user=$(echo "$usernames" | sort | uniq -c | sort -nr | head -n 1)
@@ -925,20 +919,34 @@ track_file_activities() {
 # Function to manage the system
 manage_system() {
     clear
-    echo "1. Monitor system status"
-    echo "2. Create alert report"
+    echo "1. Check CPU threshold"
+    echo "2. Show secondary storage threshold"
+    echo "3. Check I/O threshold"
+    echo "4. Check swapping threshold"
+    echo "5. Check running time and average load threshold"
+    echo "6. Check RAM memory threshold"
     echo "0. Back to main menu"
 
     read -rp "Select an option: " system_option
 
     case $system_option in
     1)
-        # Logic to monitor system status
-        monitor_system
+        check_cpu_threshold
         ;;
     2)
-        # Logic to create alert report
-        echo "Function not implemented"
+        check_secondary_storage_threshold
+        ;;
+    3)
+        check_ps_threshold
+        ;;
+    4)
+        check_swapping_threshold
+        ;;
+    5)
+        check_uptime_threshold
+        ;;
+    6)
+        check_memory_threshold
         ;;
     0) ;;
     *)
@@ -947,20 +955,95 @@ manage_system() {
     esac
 }
 
-# Function to monitor the overall system state
-monitor_system() {
-    # Monitor memory activity
-    ps aux >memory_activities.log
-    echo "Memory activities tracked and saved to memory_activities.log"
-    write_log "monitor_system:MemoryActivitiesTracked"
+check_cpu_threshold() {
+    THRESHOLD=90
+    CPU_USAGE=$(top -bn1 | grep "Cpu(s)" | awk '{print int($2)}' | cut -d. -f1)
+    echo "CPU Usage: $CPU_USAGE%"
+    if [ "$CPU_USAGE" -gt $THRESHOLD ]; then
+        echo "Alert: CPU usage higher than $THRESHOLD%!"
+    else
+        echo "Everything is okay!"
+    fi
+}
 
-    # Monitor process activity
-    track_process_activities
+check_uptime_threshold() {
+    # Get the 1-minute load average
+    saved_uptime=$(uptime)
+    load_average=$(echo "$saved_uptime" | awk -F'[a-z]:' '{print int($2)}')
 
-    # Monitor file activity in the specified directory
-    ls -l "$directory" >file_activities.log
-    echo "File activities in $directory tracked and saved to file_activities.log"
-    write_log "monitor_system:FileActivitiesTracked"
+    # Set the threshold for a high load average
+    threshold=1
+
+    echo "Current uptime and load average: $saved_uptime"
+
+    # Compare load average with the threshold
+    if [ "$load_average" -gt "$threshold" ]; then
+        echo "Load average is high! Alert!"
+    else
+        echo "Everythig is okay!"
+    fi
+}
+
+check_memory_threshold() {
+    # Get the free memory information
+    free_memory=$(free -h | grep Mem)
+
+    # Extract the percentage of used memory
+    used_percent=$(echo "$free_memory" | awk '{print int($3)}' | tr -d '%')
+
+    # Set the threshold for high memory usage
+    memory_threshold=70
+
+    echo "Current memory usage:"
+    echo "$free_memory"
+
+    # Compare memory usage with the threshold
+    if [ "$used_percent" -gt "$memory_threshold" ]; then
+        echo "Memory usage is high! Alert!"
+        # You can add additional actions here, such as sending an email or a system notification.
+    else
+        echo "Everythig is okay!"
+    fi
+}
+
+check_secondary_storage_threshold() {
+    clear
+    df_output=$(df -h)
+    echo "$df_output"
+    if echo "$df_output" | awk 'NR>1 && $5 > 80' | grep -q .; then
+        echo "File system usage is high!"
+    else
+        echo "File system usage is correct."
+    fi
+}
+
+check_ps_threshold() {
+    ps_output=$(ps aux --sort=-%cpu)
+    echo "$ps_output"
+
+    # Verifica si alguna línea tiene un uso de CPU superior al umbral (80% en este caso)
+    if echo "$ps_output" | awk '$3 > 80' | grep -q .; then
+        echo "Alert: High I/O usage detected!"
+    else
+        echo "Info: I/O usage is within normal range."
+    fi
+}
+
+check_swapping_threshold() {
+    THRESHOLD=10
+    # Run the vmstat command and extract the value from the "swap in" column (si)
+    SWAP_IN=$(vmstat 1 2 | tail -1 | awk '{print $7}')
+
+    # Round the value to an integer
+    SWAP_IN=$(printf "%.0f" "$SWAP_IN")
+
+    echo "Swapping: $SWAP_IN KB"
+
+    if [ "$SWAP_IN" -gt "$THRESHOLD" ]; then
+        echo "Alert: Swap activity (swap in) exceeds the threshold of $THRESHOLD!"
+    else
+        echo "Swap activity (swap in) within normal range."
+    fi
 }
 
 create_tables() {
@@ -972,6 +1055,12 @@ create_tables() {
     if [ ! -e "$departments_file" ]; then
         echo -e "#;Department_name;Enabled;Users" >"$departments_file"
         chmod 777 "$departments_file"
+    fi
+
+    # Check if the log file exists, if not, create it with the header
+    if [ ! -e "$logs_file" ]; then
+        echo -e "#;Username;Date;Action" >"$logs_file"
+        chmod 777 "$logs_file"
     fi
 }
 
