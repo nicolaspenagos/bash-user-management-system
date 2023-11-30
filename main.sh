@@ -48,6 +48,7 @@ manage_users() {
 }
 
 create_user() {
+    local new_username
     read -rp "Enter the username: " new_username
 
     # Check if the username contains the characters '/' or '\'
@@ -74,7 +75,7 @@ create_user() {
                 sed -i "/;$new_username;/s/No/Yes/" "$users_file"
                 update_password_in_DB "$new_username"
                 #Update departments of the user
-                # update_deparments_of_disabled_user "$new_username" TODO quitar comentario
+                update_deparments_of_disabled_user "$new_username"
                 write_log "create_user:UserCreatedAndEnabled"
             else
                 # Save user information to users.txt
@@ -88,9 +89,10 @@ create_user() {
 
 #Re-associates all departments the user had when enabled
 update_deparments_of_disabled_user() {
-    username=$1
+    local username=$1
+    local initial_departments
     initial_departments=$(grep -E ";$username;" $users_file | cut -d ";" -f5)
-    final_departments=""
+    local final_departments=""
     if [[ "$initial_departments" != "None" ]]; then
     	write_log "update_deparments_of_disabled_user:DepartmentsExist"
         for department in $(echo "$initial_departments" | tr ":" "\n"); do
@@ -112,9 +114,10 @@ update_deparments_of_disabled_user() {
 
 #Adds a user that was disabled to a department in the DB
 add_disabled_user_to_department_in_DB() {
-    new_username=$1
-    department_name=$2
+    local new_username=$1
+    local department_name=$2
     # Users in the department
+    local users
     users=$(grep -E ";$department_name;" $departments_file | cut -d ";" -f4)
     # Replace : with space
     users="${users//:/ }"
@@ -126,11 +129,11 @@ add_disabled_user_to_department_in_DB() {
         fi
         sed -i "/;$department_name;/s/$users/$new_users/" "$departments_file"
         write_log "add_disabled_user_to_department_in_DB: User '$new_username' added to department '$department_name'"
-
     fi
 }
 
 disable_user() {
+    local disable_user
     read -rp "Enter the username to disable: " disable_user
 
     # Verify if the user exists
@@ -153,10 +156,10 @@ disable_user() {
 }
 
 remove_user_from_departments() {
-    username=$1
+    local username=$1
+    local departments
     departments=$(grep -E ";$username;" $users_file | cut -d ";" -f5)
     if [[ "$departments" != "None" ]]; then
-        echo "$departments" | tr ":" "\n"
         for department in $(echo "$departments" | tr ":" "\n"); do
             remove_user_from_department_in_db "$username" "$department"
             
@@ -172,7 +175,10 @@ modify_user() {
     echo "3. Change username and password"
     echo "0. Back to main menu"
 
+    local user_option
     read -rp "Select an option: " user_option
+    local username  
+    local new_username
 
     case $user_option in
         1)
@@ -285,10 +291,12 @@ change_username_in_DB() {
 }
 
 update_password_in_DB() {
-    username=$1
-    old_hashed_password=$(grep -E ";$new_username;" $users_file | cut -d ";" -f3)
-    hashed_password=$(grep -E "$new_username:" /etc/shadow | cut -d: -f2)
-    sed -i "/;$new_username;/s#$old_hashed_password#$hashed_password#" "$users_file"
+    local username=$1
+    local old_hashed_password
+    local hashed_password
+    old_hashed_password=$(grep -E ";$username;" $users_file | cut -d ";" -f3)
+    hashed_password=$(grep -E "$username:" /etc/shadow | cut -d: -f2)
+    sed -i "/;$username;/s#$old_hashed_password#$hashed_password#" "$users_file"
 }
 
 create_department() {
@@ -576,12 +584,14 @@ manage_assignments() {
 }
 
 assign_user_to_department() {
+    local username_to_assign
     read -rp "Enter the username: " username_to_assign
     # Logging: Attempt to assign user to department
     write_log "assign_user_to_department:AttemptToAssignUser '$username_to_assign' to Department"
     
     # Verify if the user exists
     if id "$username_to_assign" > "/dev/null" 2>&1; then
+        local department_name
         read -rp "Enter the department name to assign to $username_to_assign: " department_name
         # Check if the department exists in the operating system
         if department_exists_in_OS "$department_name"; then
@@ -619,9 +629,10 @@ assign_user_to_department() {
 }
 
 add_user_to_department_in_DB() {
-    username=$1
-    department_name=$2
-
+    local username=$1
+    local department_name=$2
+    local old_users_in_department
+    local new_users_in_department
     old_users_in_department=$(grep -E ";$department_name;" $departments_file | cut -d ";" -f4)
     if [[ "$old_users_in_department" == "None" ]]; then
         new_users_in_department="$username"
@@ -632,9 +643,10 @@ add_user_to_department_in_DB() {
 }
 
 add_department_to_user_in_DB() {
-    username=$1
-    department_name=$2
-
+    local username=$1
+    local department_name=$2
+    local old_departments_of_user
+    local new_departments_of_user
     old_departments_of_user=$(grep -E ";$username;" $users_file | cut -d ";" -f5)
     if [[ "$old_departments_of_user" == "None" ]]; then
         new_departments_of_user="$department_name"
