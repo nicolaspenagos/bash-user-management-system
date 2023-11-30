@@ -442,7 +442,7 @@ modify_department() {
 
         # Modify the department name
         sudo groupmod -n "$new_department_name" "$department_name"
-        sed -i "s/$department_name/$new_department_name/" "$departments_file"
+        change_department_name_in_dbs "$department_name" "$new_department_name"
 
         # Logging: Department successfully modified
         write_log "modify_department:DepartmentSuccessfullyModified '$department_name' to '$new_department_name'"
@@ -453,6 +453,32 @@ modify_department() {
         write_log "modify_department:DepartmentNotFound '$department_name'"
         echo "Department $department_name doesn't exist."
     fi
+}
+
+change_department_name_in_dbs() {
+    local old_department_name=$1
+    local new_department_name=$2
+    local users
+    users=$(grep -E ";$old_department_name;" $departments_file | cut -d ";" -f4)
+    change_department_name_in_users_DB "$old_department_name" "$new_department_name"
+    for user in $(echo "$users" | tr ":" "\n"); do
+        change_department_name_in_departments_DB "$old_department_name" "$new_department_name" "$user"
+    done
+}
+
+change_department_name_in_users_DB() {
+    local old_department_name=$1
+    local new_department_name=$2
+    sed -i "/;$old_department_name;/s/$old_department_name/$new_department_name/" $departments_file
+}
+
+change_department_name_in_departments_DB() {
+    local old_department_name=$1
+    local new_department_name=$2
+    local user=$3
+    sed -i "/;$user;/s/;$old_department_name:/;$new_department_name:/" "$users_file"
+    sed -i "/;$user;/s/:$old_department_name/:$new_department_name/" "$users_file"
+    sed -i "/;$user;/s/;$old_department_name/;$new_department_name/" "$users_file"
 }
 
 # Function to check if the department exists
@@ -717,7 +743,7 @@ manage_logs() {
 
 # Function to write logs to $logs_file table
 write_log() {
-    author=$(whoami)
+    author=$(who am i)
     date=$(date +"%Y-%m-%d %H:%M:%S")
     action=$1
 
@@ -725,7 +751,7 @@ write_log() {
     index=$(wc -l <"$logs_file")
 
     # Append the log entry to the $logs_file table with the index
-    echo -e "${index};${username};${date};${action}" >>"$logs_file"
+    echo -e "${index};${author};${date};${action}" >>"$logs_file"
 }
 
 # Function to load and filter logs by date without hours
